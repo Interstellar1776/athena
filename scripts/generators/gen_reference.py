@@ -50,9 +50,7 @@ def generate(config) -> pd.DataFrame:
             vin, vconv = _baseline_monthly_volumes(s, m)
             rows.append({
                 "date": m.isoformat(),
-                "entity": s.entity,
-                "segment": s.segment,
-                "product_type": s.product_type,
+                **s.dims(),
                 "reference_type": "plan",
                 "volume_in_ref": int(round(vin)),
                 "volume_converted_ref": int(round(vconv)),
@@ -71,9 +69,7 @@ def generate(config) -> pd.DataFrame:
             f_cpa = s.base_cpa * (1.0 + config.forecast_divergence)
             rows.append({
                 "date": config.forecast_issue_date.isoformat(),
-                "entity": s.entity,
-                "segment": s.segment,
-                "product_type": s.product_type,
+                **s.dims(),
                 "reference_type": "forecast",
                 "volume_in_ref": int(round(vin)),
                 "volume_converted_ref": int(round(vconv)),

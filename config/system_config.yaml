@@ -6,7 +6,7 @@
 # classifier); only the documented Phase-1 keys live here for now.
 
 # --- period & pro-rating ---
-period_close_day: 5             # period considered closed after this day of the following month
+period_close_day: 8             # period closed after this day of the following month; >= conv-lag SLA (7d) so every in-period gain has landed by close (the closed period is final/complete)
 pro_rate_default: calendar_days # calendar_days | business_days (per-entity/segment override later)
 
 # --- scheduling ---
