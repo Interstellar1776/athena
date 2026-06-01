@@ -1,0 +1,9 @@
+entity,segment,expected_retention_periods,effective_date
+ERCOT North,Paid Search,4.0,2023-01-01
+ERCOT North,Door_to_Door,8.0,2023-01-01
+ERCOT Coast,Paid Search,5.0,2023-01-01
+ERCOT Coast,Door_to_Door,8.0,2023-01-01
+PJM East,Broker,6.0,2023-01-01
+PJM East,Affiliate,7.0,2023-01-01
+ERCOT Coast,Affiliate,5.0,2024-03-01
+ERCOT West,Broker,6.0,2024-05-15

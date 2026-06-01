@@ -1,0 +1,18 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# --- OS noise ---
+.DS_Store
+
+# --- Athena data folders ---
+# Snapshots ARE committed: they are reproducible from the seeded generator and
+# the demo must work on a fresh clone (see docs/decisions + Build Sequence 1 plan).
+# Live and processed data are runtime artifacts and are NOT committed.
+data/live/*
+!data/live/.gitkeep
+data/processed/*
+!data/processed/.gitkeep

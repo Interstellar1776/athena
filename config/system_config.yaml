@@ -1,0 +1,25 @@
+# Athena — system configuration
+#
+# The SAME codebase runs in dev, demo, and production; only this file changes.
+# Every key here is defined in docs/data_dictionary.md. Alert-threshold keys
+# beyond cpa_ltv_warning_threshold are authored in Build Sequence 3 (risk
+# classifier); only the documented Phase-1 keys live here for now.
+
+# --- period & pro-rating ---
+period_close_day: 5             # period considered closed after this day of the following month
+pro_rate_default: calendar_days # calendar_days | business_days (per-entity/segment override later)
+
+# --- scheduling ---
+batch_frequency: daily          # daily | weekly | custom cron
+
+# --- unit-economics thresholds ---
+cpa_ltv_warning_threshold: 0.80 # trailing-12-month CPA > 80% of LTV -> MEDIUM compression alert
+
+# --- confidence display ---
+min_confidence_display: always_show  # low confidence is shown, never suppressed
+
+# --- data mode (snapshot vs live) ---
+data_mode: snapshot             # snapshot | live
+snapshot_date: "2024-05-22"     # active snapshot — ignored in live mode
+snapshot_path: "data/snapshots/"
+live_data_path: "data/live/"

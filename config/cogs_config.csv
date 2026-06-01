@@ -1,0 +1,9 @@
+entity,segment,product_type,cogs_per_unit,cogs_comparison_mode,effective_date
+ERCOT North,Paid Search,Term,40.0,hybrid,2023-01-01
+ERCOT North,Door_to_Door,Month_to_Month,35.0,linear_trend,2023-01-01
+ERCOT Coast,Paid Search,Term,40.0,hybrid,2023-01-01
+ERCOT Coast,Door_to_Door,Month_to_Month,34.0,prior_year_same_period,2023-01-01
+PJM East,Broker,Term,45.0,prior_year_same_period,2023-01-01
+PJM East,Affiliate,Month_to_Month,32.0,linear_trend,2023-01-01
+ERCOT Coast,Affiliate,Term,30.0,plan_vs_actual,2024-03-01
+ERCOT West,Broker,Term,44.0,plan_vs_actual,2024-05-15

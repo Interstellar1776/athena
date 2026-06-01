@@ -1,0 +1,85 @@
+date,entity,segment,product_type,reference_type,volume_in_ref,volume_converted_ref,cost_ref,cpa_ref,cogs_ref,ltv_ref,margin_ref
+2023-05-01,ERCOT North,Paid Search,Term,plan,1727,1486,175300.61,118.0,40.0,150.0,37.5
+2023-06-01,ERCOT North,Paid Search,Term,plan,1717,1477,174268.25,118.0,40.0,150.0,37.5
+2023-07-01,ERCOT North,Paid Search,Term,plan,1782,1533,180837.36,118.0,40.0,150.0,37.5
+2023-08-01,ERCOT North,Paid Search,Term,plan,1776,1527,180236.34,118.0,40.0,150.0,37.5
+2023-09-01,ERCOT North,Paid Search,Term,plan,1665,1431,168915.49,118.0,40.0,150.0,37.5
+2023-10-01,ERCOT North,Paid Search,Term,plan,1656,1424,168000.14,118.0,40.0,150.0,37.5
+2023-11-01,ERCOT North,Paid Search,Term,plan,1542,1326,156457.8,118.0,40.0,150.0,37.5
+2023-12-01,ERCOT North,Paid Search,Term,plan,1536,1321,155841.28,118.0,40.0,150.0,37.5
+2024-01-01,ERCOT North,Paid Search,Term,plan,1528,1314,155073.62,118.0,40.0,150.0,37.5
+2024-02-01,ERCOT North,Paid Search,Term,plan,1444,1241,146490.8,118.0,40.0,150.0,37.5
+2024-03-01,ERCOT North,Paid Search,Term,plan,1584,1362,160744.32,118.0,40.0,150.0,37.5
+2024-04-01,ERCOT North,Paid Search,Term,plan,1606,1381,162976.88,118.0,40.0,150.0,37.5
+2024-05-01,ERCOT North,Paid Search,Term,plan,1727,1486,175300.61,118.0,40.0,150.0,37.5
+2024-05-10,ERCOT North,Paid Search,Term,forecast,1727,1441,190446.58,132.16,40.0,150.0,37.5
+2023-05-01,ERCOT North,Door_to_Door,Month_to_Month,plan,1007,886,84161.79,95.0,35.0,280.0,35.0
+2023-06-01,ERCOT North,Door_to_Door,Month_to_Month,plan,992,873,82955.76,95.0,35.0,280.0,35.0
+2023-07-01,ERCOT North,Door_to_Door,Month_to_Month,plan,972,855,81259.2,95.0,35.0,280.0,35.0
+2023-08-01,ERCOT North,Door_to_Door,Month_to_Month,plan,1035,911,86531.43,95.0,35.0,280.0,35.0
+2023-09-01,ERCOT North,Door_to_Door,Month_to_Month,plan,930,818,77727.94,95.0,35.0,280.0,35.0
+2023-10-01,ERCOT North,Door_to_Door,Month_to_Month,plan,934,822,78082.4,95.0,35.0,280.0,35.0
+2023-11-01,ERCOT North,Door_to_Door,Month_to_Month,plan,891,784,74477.57,95.0,35.0,280.0,35.0
+2023-12-01,ERCOT North,Door_to_Door,Month_to_Month,plan,838,737,70027.22,95.0,35.0,280.0,35.0
+2024-01-01,ERCOT North,Door_to_Door,Month_to_Month,plan,891,784,74450.82,95.0,35.0,280.0,35.0
+2024-02-01,ERCOT North,Door_to_Door,Month_to_Month,plan,826,727,69093.52,95.0,35.0,280.0,35.0
+2024-03-01,ERCOT North,Door_to_Door,Month_to_Month,plan,864,760,72230.4,95.0,35.0,280.0,35.0
+2024-04-01,ERCOT North,Door_to_Door,Month_to_Month,plan,928,817,77580.8,95.0,35.0,280.0,35.0
+2024-05-01,ERCOT North,Door_to_Door,Month_to_Month,plan,1007,886,84161.79,95.0,35.0,280.0,35.0
+2023-05-01,ERCOT Coast,Paid Search,Term,plan,1508,1281,140959.1,110.0,40.0,180.0,36.0
+2023-06-01,ERCOT Coast,Paid Search,Term,plan,1499,1274,140128.98,110.0,40.0,180.0,36.0
+2023-07-01,ERCOT Coast,Paid Search,Term,plan,1555,1322,145411.2,110.0,40.0,180.0,36.0
+2023-08-01,ERCOT Coast,Paid Search,Term,plan,1550,1318,144927.92,110.0,40.0,180.0,36.0
+2023-09-01,ERCOT Coast,Paid Search,Term,plan,1453,1235,135824.83,110.0,40.0,180.0,36.0
+2023-10-01,ERCOT Coast,Paid Search,Term,plan,1445,1228,135088.8,110.0,40.0,180.0,36.0
+2023-11-01,ERCOT Coast,Paid Search,Term,plan,1346,1144,125807.62,110.0,40.0,180.0,36.0
+2023-12-01,ERCOT Coast,Paid Search,Term,plan,1340,1139,125311.87,110.0,40.0,180.0,36.0
+2024-01-01,ERCOT Coast,Paid Search,Term,plan,1334,1134,124694.59,110.0,40.0,180.0,36.0
+2024-02-01,ERCOT Coast,Paid Search,Term,plan,1260,1071,117793.16,110.0,40.0,180.0,36.0
+2024-03-01,ERCOT Coast,Paid Search,Term,plan,1382,1175,129254.4,110.0,40.0,180.0,36.0
+2024-04-01,ERCOT Coast,Paid Search,Term,plan,1402,1191,131049.6,110.0,40.0,180.0,36.0
+2024-05-01,ERCOT Coast,Paid Search,Term,plan,1508,1281,140959.1,110.0,40.0,180.0,36.0
+2024-05-10,ERCOT Coast,Paid Search,Term,forecast,1508,1243,153137.97,123.2,40.0,180.0,36.0
+2023-05-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1510,1329,116940.6,88.0,34.0,272.0,34.0
+2023-06-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1488,1310,115264.84,88.0,34.0,272.0,34.0
+2023-07-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1458,1283,112907.52,88.0,34.0,272.0,34.0
+2023-08-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1553,1366,120233.15,88.0,34.0,272.0,34.0
+2023-09-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1395,1227,108000.92,88.0,34.0,272.0,34.0
+2023-10-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1401,1233,108493.44,88.0,34.0,272.0,34.0
+2023-11-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1336,1176,103484.62,88.0,34.0,272.0,34.0
+2023-12-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1256,1106,97300.98,88.0,34.0,272.0,34.0
+2024-01-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1336,1176,103447.45,88.0,34.0,272.0,34.0
+2024-02-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1240,1091,96003.63,88.0,34.0,272.0,34.0
+2024-03-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1296,1140,100362.24,88.0,34.0,272.0,34.0
+2024-04-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1392,1225,107796.48,88.0,34.0,272.0,34.0
+2024-05-01,ERCOT Coast,Door_to_Door,Month_to_Month,plan,1510,1329,116940.6,88.0,34.0,272.0,34.0
+2023-05-01,PJM East,Broker,Term,plan,881,758,98482.38,130.0,45.0,270.0,45.0
+2023-06-01,PJM East,Broker,Term,plan,868,747,97071.13,130.0,45.0,270.0,45.0
+2023-07-01,PJM East,Broker,Term,plan,850,731,95085.9,130.0,45.0,270.0,45.0
+2023-08-01,PJM East,Broker,Term,plan,906,779,101255.23,130.0,45.0,270.0,45.0
+2023-09-01,PJM East,Broker,Term,plan,814,700,90953.77,130.0,45.0,270.0,45.0
+2023-10-01,PJM East,Broker,Term,plan,817,703,91368.55,130.0,45.0,270.0,45.0
+2023-11-01,PJM East,Broker,Term,plan,780,670,87150.34,130.0,45.0,270.0,45.0
+2023-12-01,PJM East,Broker,Term,plan,733,630,81942.74,130.0,45.0,270.0,45.0
+2024-01-01,PJM East,Broker,Term,plan,779,670,87119.03,130.0,45.0,270.0,45.0
+2024-02-01,PJM East,Broker,Term,plan,723,622,80850.17,130.0,45.0,270.0,45.0
+2024-03-01,PJM East,Broker,Term,plan,756,650,84520.8,130.0,45.0,270.0,45.0
+2024-04-01,PJM East,Broker,Term,plan,812,698,90781.6,130.0,45.0,270.0,45.0
+2024-05-01,PJM East,Broker,Term,plan,881,758,98482.38,130.0,45.0,270.0,45.0
+2023-05-01,PJM East,Affiliate,Month_to_Month,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
+2023-06-01,PJM East,Affiliate,Month_to_Month,plan,1405,1166,81632.63,70.0,32.0,196.0,28.0
+2023-07-01,PJM East,Affiliate,Month_to_Month,plan,1458,1210,84709.8,70.0,32.0,196.0,28.0
+2023-08-01,PJM East,Affiliate,Month_to_Month,plan,1453,1206,84428.26,70.0,32.0,196.0,28.0
+2023-09-01,PJM East,Affiliate,Month_to_Month,plan,1362,1130,79125.23,70.0,32.0,196.0,28.0
+2023-10-01,PJM East,Affiliate,Month_to_Month,plan,1354,1124,78696.45,70.0,32.0,196.0,28.0
+2023-11-01,PJM East,Affiliate,Month_to_Month,plan,1261,1047,73289.66,70.0,32.0,196.0,28.0
+2023-12-01,PJM East,Affiliate,Month_to_Month,plan,1256,1043,73000.86,70.0,32.0,196.0,28.0
+2024-01-01,PJM East,Affiliate,Month_to_Month,plan,1250,1038,72641.27,70.0,32.0,196.0,28.0
+2024-02-01,PJM East,Affiliate,Month_to_Month,plan,1181,980,68620.81,70.0,32.0,196.0,28.0
+2024-03-01,PJM East,Affiliate,Month_to_Month,plan,1296,1076,75297.6,70.0,32.0,196.0,28.0
+2024-04-01,PJM East,Affiliate,Month_to_Month,plan,1314,1091,76343.4,70.0,32.0,196.0,28.0
+2024-05-01,PJM East,Affiliate,Month_to_Month,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
+2024-03-01,ERCOT Coast,Affiliate,Term,plan,864,726,61689.6,85.0,30.0,150.0,30.0
+2024-04-01,ERCOT Coast,Affiliate,Term,plan,876,736,62546.4,85.0,30.0,150.0,30.0
+2024-05-01,ERCOT Coast,Affiliate,Term,plan,942,791,67275.94,85.0,30.0,150.0,30.0
+2024-05-01,ERCOT West,Broker,Term,plan,629,516,64493.0,125.0,44.0,264.0,44.0

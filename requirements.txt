@@ -1,0 +1,7 @@
+# Athena — Python dependencies
+# Phase 1 (data & config foundation) only needs the data-generation stack.
+# Pinned to the minimum the snapshot generator and config tooling require.
+pandas>=2.0
+numpy>=1.24
+pyyaml>=6.0
+openpyxl>=3.1   # read/write .xlsx — snapshots can be emitted as CSV and/or XLSX
