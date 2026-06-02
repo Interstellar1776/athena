@@ -289,6 +289,14 @@ class Series:
     # Fractional rise in cost-per-conversion from history_start to active period.
     cpa_history_drift: float = 0.0
 
+    # --- per-sub-segment economics overrides (resolved onto leaves at derive time) ---
+    # Optional. Keys may be a product_type string ("Term": 40.0) OR a sub-segment
+    # tuple (product_type, contract_term_months, customer_class) for finer control.
+    # Precedence: sub-segment > product_type > unit default. Empty => uniform per
+    # unit (today's behavior). See _resolve_override / _derive_leaf_series.
+    cogs_overrides: dict = field(default_factory=dict)
+    retention_overrides: dict = field(default_factory=dict)
+
     def dims(self) -> dict:
         """The dimension columns this series stamps onto every row it produces.
         contract_term_months is stringified ('12'/None) so it round-trips through
@@ -552,21 +560,40 @@ def _default_mix(size_tier: str):
     ]
 
 
+def _resolve_override(overrides: dict, product_type, subseg_key, default):
+    """Most-specific override wins: sub-segment tuple > product_type > unit default."""
+    if subseg_key in overrides:
+        return overrides[subseg_key]
+    if product_type in overrides:
+        return overrides[product_type]
+    return default
+
+
 def _derive_leaf_series(units: list[Series]) -> list[Series]:
-    """Expand each UNIT into leaf Series by its mix: same economics, dims set from
-    the mix combo, base_volume_in split by weight. These leaves are what the
-    record-level generators (sales/conversions/reference) iterate; gen_gl works on
-    UNITS (spend stays at channel×geography grain)."""
+    """Expand each UNIT into leaf Series by its mix: dims set from the mix combo,
+    base_volume_in split by weight, and per-sub-segment economics (cogs, retention)
+    resolved from the unit's override maps. These leaves are what the record-level
+    generators (sales/conversions/reference) iterate; gen_gl works on UNITS (spend
+    stays at channel×geography grain). Resolving cogs/retention here means both the
+    config tables AND the plan feed (gen_reference's cogs_ref / ltv_ref) read the
+    same per-leaf values — one source, no drift."""
     leaves = []
     for u in units:
         mix = MIX_BY_UNIT.get((u.segment, u.entity, u.region)) or _default_mix(u.customer_size_tier)
         for product_type, term, customer_class, weight in mix:
+            subseg_key = (product_type, term, customer_class)
+            cogs = _resolve_override(u.cogs_overrides, product_type, subseg_key, u.base_cogs_per_unit)
+            retention = _resolve_override(u.retention_overrides, product_type, subseg_key,
+                                          u.expected_retention_periods)
             leaves.append(replace(
                 u,
                 product_type=product_type,
                 contract_term_months=term,
                 customer_class=customer_class,
                 base_volume_in=round(u.base_volume_in * weight, 4),
+                base_cogs_per_unit=cogs,
+                expected_retention_periods=retention,
+                cogs_overrides={}, retention_overrides={},  # resolved — clear on leaves
             ))
     return leaves
 
@@ -665,6 +692,41 @@ def canonical_gl_mapping_lookup() -> dict:
         (r["cost_center"], r["gl_account"], r["vendor"]): r
         for r in canonical_gl_mapping_rows()
     }
+
+
+# cogs_config / retention_config are DERIVED from the roster (per sub-segment /
+# leaf) and validated against these builders — so they can never silently drift
+# from the economics the generator uses. cogs_config is the standing COGS input
+# (the plan feed's cogs_ref is the fallback); retention_config drives LTV.
+COGS_CONFIG_COLUMNS = DIMENSION_COLUMNS + ["cogs_per_unit", "cogs_comparison_mode", "effective_date"]
+RETENTION_CONFIG_COLUMNS = DIMENSION_COLUMNS + ["expected_retention_periods", "effective_date"]
+
+
+def canonical_cogs_config_rows() -> list[dict]:
+    """One row per leaf series: dimension tuple + resolved cogs_per_unit +
+    comparison mode + effective date (the unit's history start)."""
+    rows = []
+    for s in SERIES:
+        rows.append({
+            **s.dims(),
+            "cogs_per_unit": round(s.base_cogs_per_unit, 2),
+            "cogs_comparison_mode": s.cogs_comparison_mode,
+            "effective_date": s.effective_history_start.isoformat(),
+        })
+    return rows
+
+
+def canonical_retention_config_rows() -> list[dict]:
+    """One row per leaf series: dimension tuple + resolved expected_retention_periods
+    + effective date."""
+    rows = []
+    for s in SERIES:
+        rows.append({
+            **s.dims(),
+            "expected_retention_periods": round(s.expected_retention_periods, 2),
+            "effective_date": s.effective_history_start.isoformat(),
+        })
+    return rows
 
 
 # ---------------------------------------------------------------------------

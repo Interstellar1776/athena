@@ -55,7 +55,24 @@ def _dim_keys(df) -> list:
             for t in df[shared.DIMENSION_COLUMNS].itertuples(index=False, name=None)]
 
 
-def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
+def _config_drift_problems(name, df, cols, canon_rows) -> list:
+    """Problems if a roster-derived config CSV (read with dtype=str) doesn't match
+    its canonical rows. None -> '' to mirror blank CSV cells / float formatting."""
+    missing_cols = [c for c in cols if c not in df.columns]
+    if missing_cols:
+        return [f"{name}: missing column(s) {missing_cols}"]
+    canon = {tuple("" if r[c] is None else str(r[c]) for c in cols) for r in canon_rows}
+    authored = {tuple(r) for r in df[cols].fillna("").astype(str).itertuples(index=False, name=None)}
+    probs = []
+    if canon - authored:
+        probs.append(f"{name}: rows missing/changed vs roster: {sorted(map(str, canon - authored))[:3]}")
+    if authored - canon:
+        probs.append(f"{name}: rows not in roster: {sorted(map(str, authored - canon))[:3]}")
+    return probs
+
+
+def validate(sales, conversions, gl, reference, notes, gl_mapping,
+             cogs_config, retention_config) -> None:
     problems: list[str] = []
 
     valid_keys = {s.key for s in shared.SERIES}
@@ -87,6 +104,13 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
             problems.append(f"gl_mapping.csv missing rows vs shared.SERIES: {sorted(missing)[:5]}")
         if extra:
             problems.append(f"gl_mapping.csv has rows not in shared.SERIES: {sorted(extra)[:5]}")
+
+    # 3b) cogs_config / retention_config must equal the roster-derived canonical
+    #     tables — drift-guard so these inputs can never go stale again.
+    problems += _config_drift_problems("cogs_config.csv", cogs_config,
+                                       shared.COGS_CONFIG_COLUMNS, shared.canonical_cogs_config_rows())
+    problems += _config_drift_problems("retention_config.csv", retention_config,
+                                       shared.RETENTION_CONFIG_COLUMNS, shared.canonical_retention_config_rows())
 
     # 4) Every ledger (cost_center, gl_account, vendor) combo must resolve via the
     #    mapping (the dimension-free ledger can only tie back to a gain that way).
@@ -302,8 +326,11 @@ def main(argv=None) -> int:
     # --- load static config + validate (halt loudly on any problem) ---
     gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv",
                              dtype={"cost_center": str, "gl_account": str})
+    cogs_config = pd.read_csv(CONFIG_DIR / "cogs_config.csv", dtype=str)
+    retention_config = pd.read_csv(CONFIG_DIR / "retention_config.csv", dtype=str)
     try:
-        validate(sales, conversions, gl, reference, notes, gl_mapping)
+        validate(sales, conversions, gl, reference, notes, gl_mapping,
+                 cogs_config, retention_config)
     except PipelineHalt as e:
         print(f"\nPIPELINE HALTED\n{e}", file=sys.stderr)
         return 1

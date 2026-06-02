@@ -292,6 +292,33 @@ Differentiated economics per term/class/tier can be layered on later.
 
 ---
 
+## 2026 — Build Sequence 1 (revision 6: config tables derived from the roster)
+
+### cogs_config & retention_config derived per-sub-segment + validated (drift-guard)
+**Chose:** Generate `config/cogs_config.csv` and `config/retention_config.csv` from the roster
+(`canonical_cogs_config_rows()` / `canonical_retention_config_rows()`), one row per **sub-segment
+(leaf)** keyed by the full dimension hierarchy, and have the orchestrator **validate them ==
+canonical** (halt on drift) — the same pattern as `gl_mapping`. Each unit can override `cogs` /
+`retention` by `product_type` or by an exact sub-segment (precedence: sub-segment > product_type
+> unit default); overrides resolve onto the leaves at derive time, so the config tables **and**
+the plan feed (`gen_reference`'s `cogs_ref` / `ltv_ref`) read the same per-leaf values.
+**Rejected:** Hand-authored config tables (how they drifted to the old taxonomy in the first
+place); unit-grain rows (the user wanted per-sub-segment structure for later tuning); COGS in a
+single place (kept the §10 two-place model — see below).
+**Why:** These tables are Phase-3 inputs (COGS→margin, retention→LTV) and had silently gone
+stale (old `ERCOT North` / `Paid Search` taxonomy) because they duplicated roster economics by
+hand. Deriving + validating makes drift impossible and gives a real per-segment tuning knob
+without restructuring later. Snapshots are unaffected (the pipeline doesn't read these tables).
+
+### COGS two-place model affirmed (not a deviation)
+**Chose:** Keep COGS as both a standing configured input (`cogs_config`) and a plan value
+(`reference_data.cogs_ref`), the latter being the fallback. Both come from one per-leaf source.
+**Why:** Matches LOCKED §10 ("COGS is a plan input… configured in a reference table"; fallback
+chain ends in plan COGS) and is realistic — a standing rate sheet *and* a budgeted figure. The
+one-source derivation removes the only real downside (the two drifting apart).
+
+---
+
 ## Template for new entries
 
 ```

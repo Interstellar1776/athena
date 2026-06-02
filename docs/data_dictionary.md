@@ -182,23 +182,34 @@ non-hero channels it's a carved slice of acquisition spend; for the **hero** it'
 an *additive* Q2 incentive surge paid at month-end (extra CPA damage that lands
 only in the post-close snapshot, alongside the restatement).
 
-### retention_config.csv
-Drives calculated LTV.
-| Field | Type | Notes |
-|---|---|---|
-| entity | string | — |
-| segment | string | — |
-| expected_retention_periods | float | Average retention in periods |
-| effective_date | date | When this input became active |
+Both config tables below are **derived from the roster and validated against it**
+(`shared.canonical_cogs_config_rows()` / `canonical_retention_config_rows()`; the orchestrator
+halts on any drift) — like `gl_mapping`, so they can never go stale. They're keyed by the **full
+dimension hierarchy, one row per sub-segment** (33 rows). Values are uniform within a unit today
+(the unit's single rate), but a unit can override `cogs`/`retention` by `product_type` or by an
+exact sub-segment (precedence: sub-segment > product_type > unit default) — the per-segment
+tuning knob.
 
 ### cogs_config.csv
+The standing COGS input. **COGS lives in two places by design (§10):** this table is the
+authoritative configured rate; `reference_data.cogs_ref` is the **plan COGS** at the bottom of
+the fallback chain (current input → trailing-avg → plan). Both derive from the same per-leaf
+value, so they can't disagree.
+
 | Field | Type | Notes |
 |---|---|---|
-| entity | string | — |
-| segment | string | — |
-| product_type | string | e.g. term / month_to_month; nullable if N/A |
-| cogs_per_unit | float | Cost per unit |
+| *(dimensions)* | — | The eight hierarchy fields (one row per sub-segment) |
+| cogs_per_unit | float | Cost per unit (resolved per sub-segment; uniform within a unit unless overridden) |
 | cogs_comparison_mode | string | linear_trend / prior_year_same_period / plan_vs_actual / hybrid |
+| effective_date | date | When this input became active (the unit's history start) |
+
+### retention_config.csv
+Drives calculated LTV (config-only — the plan carries computed `ltv_ref`, so no duplication).
+
+| Field | Type | Notes |
+|---|---|---|
+| *(dimensions)* | — | The eight hierarchy fields (one row per sub-segment) |
+| expected_retention_periods | float | Average retention in periods (resolved per sub-segment) |
 | effective_date | date | When this input became active |
 
 ### system_config.yaml
