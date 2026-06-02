@@ -1,109 +1,135 @@
 date,entity,region,service_territory,segment,product_type,contract_term_months,customer_size_tier,customer_class,reference_type,volume_in_ref,volume_converted_ref,cost_ref,cpa_ref,cogs_ref,ltv_ref,margin_ref
-2023-05-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1727,1486,175300.61,118.0,40.0,150.0,37.5
-2023-06-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1717,1477,174268.25,118.0,40.0,150.0,37.5
-2023-07-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1782,1533,180837.36,118.0,40.0,150.0,37.5
-2023-08-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1776,1527,180236.34,118.0,40.0,150.0,37.5
-2023-09-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1665,1431,168915.49,118.0,40.0,150.0,37.5
-2023-10-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1656,1424,168000.14,118.0,40.0,150.0,37.5
-2023-11-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1542,1326,156457.8,118.0,40.0,150.0,37.5
-2023-12-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1536,1321,155841.28,118.0,40.0,150.0,37.5
-2024-01-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1528,1314,155073.62,118.0,40.0,150.0,37.5
-2024-02-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1444,1241,146490.8,118.0,40.0,150.0,37.5
-2024-03-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1584,1362,160744.32,118.0,40.0,150.0,37.5
-2024-04-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1606,1381,162976.88,118.0,40.0,150.0,37.5
-2024-05-01,ERCOT,North,Oncor,Paid Search,Term,24,residential,single_family,plan,1727,1486,175300.61,118.0,40.0,150.0,37.5
-2023-05-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,957,842,79988.48,95.0,35.0,280.0,35.0
-2023-06-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,941,828,78664.94,95.0,35.0,280.0,35.0
-2023-07-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,907,798,75841.92,95.0,35.0,280.0,35.0
-2023-08-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,984,866,82240.62,95.0,35.0,280.0,35.0
-2023-09-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,874,769,73032.96,95.0,35.0,280.0,35.0
-2023-10-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,880,774,73568.0,95.0,35.0,280.0,35.0
-2023-11-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,845,743,70625.28,95.0,35.0,280.0,35.0
-2023-12-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,782,688,65358.74,95.0,35.0,280.0,35.0
-2024-01-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,846,745,70759.04,95.0,35.0,280.0,35.0
-2024-02-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,782,688,65358.74,95.0,35.0,280.0,35.0
-2024-03-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,806,710,67415.04,95.0,35.0,280.0,35.0
-2024-04-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,880,774,73568.0,95.0,35.0,280.0,35.0
-2024-05-01,ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,single_family,plan,957,842,79988.48,95.0,35.0,280.0,35.0
-2023-05-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1508,1281,140959.1,110.0,40.0,180.0,36.0
-2023-06-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1499,1274,140128.98,110.0,40.0,180.0,36.0
-2023-07-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1555,1322,145411.2,110.0,40.0,180.0,36.0
-2023-08-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1550,1318,144927.92,110.0,40.0,180.0,36.0
-2023-09-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1453,1235,135824.83,110.0,40.0,180.0,36.0
-2023-10-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1445,1228,135088.8,110.0,40.0,180.0,36.0
-2023-11-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1346,1144,125807.62,110.0,40.0,180.0,36.0
-2023-12-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1340,1139,125311.87,110.0,40.0,180.0,36.0
-2024-01-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1334,1134,124694.59,110.0,40.0,180.0,36.0
-2024-02-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1260,1071,117793.16,110.0,40.0,180.0,36.0
-2024-03-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1382,1175,129254.4,110.0,40.0,180.0,36.0
-2024-04-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1402,1191,131049.6,110.0,40.0,180.0,36.0
-2024-05-01,ERCOT,South,CenterPoint,Paid Search,Term,12,residential,multi_family,plan,1508,1281,140959.1,110.0,40.0,180.0,36.0
-2023-05-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1435,1263,111141.89,88.0,34.0,272.0,34.0
-2023-06-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1411,1242,109302.86,88.0,34.0,272.0,34.0
-2023-07-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1361,1198,105380.35,88.0,34.0,272.0,34.0
-2023-08-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1476,1299,114271.18,88.0,34.0,272.0,34.0
-2023-09-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1310,1153,101477.38,88.0,34.0,272.0,34.0
-2023-10-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1320,1162,102220.8,88.0,34.0,272.0,34.0
-2023-11-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1267,1115,98131.97,88.0,34.0,272.0,34.0
-2023-12-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1173,1032,90814.25,88.0,34.0,272.0,34.0
-2024-01-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1270,1117,98317.82,88.0,34.0,272.0,34.0
-2024-02-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1173,1032,90814.25,88.0,34.0,272.0,34.0
-2024-03-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1210,1064,93671.42,88.0,34.0,272.0,34.0
-2024-04-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1320,1162,102220.8,88.0,34.0,272.0,34.0
-2024-05-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1435,1263,111141.89,88.0,34.0,272.0,34.0
-2023-05-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,837,720,93598.96,130.0,45.0,270.0,45.0
-2023-06-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,823,708,92050.21,130.0,45.0,270.0,45.0
-2023-07-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,794,683,88746.84,130.0,45.0,270.0,45.0
-2023-08-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,861,740,96234.31,130.0,45.0,270.0,45.0
-2023-09-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,764,657,85459.92,130.0,45.0,270.0,45.0
-2023-10-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,770,662,86086.0,130.0,45.0,270.0,45.0
-2023-11-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,739,636,82642.56,130.0,45.0,270.0,45.0
-2023-12-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,684,588,76479.89,130.0,45.0,270.0,45.0
-2024-01-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,741,637,82799.08,130.0,45.0,270.0,45.0
-2024-02-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,684,588,76479.89,130.0,45.0,270.0,45.0
-2024-03-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,706,607,78886.08,130.0,45.0,270.0,45.0
-2024-04-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,770,662,86086.0,130.0,45.0,270.0,45.0
-2024-05-01,PJM,East,PECO,Broker,Term,36,small_C&I,,plan,837,720,93598.96,130.0,45.0,270.0,45.0
-2023-05-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
-2023-06-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1405,1166,81632.63,70.0,32.0,196.0,28.0
-2023-07-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1458,1210,84709.8,70.0,32.0,196.0,28.0
-2023-08-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1453,1206,84428.26,70.0,32.0,196.0,28.0
-2023-09-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1362,1130,79125.23,70.0,32.0,196.0,28.0
-2023-10-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1354,1124,78696.45,70.0,32.0,196.0,28.0
-2023-11-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1261,1047,73289.66,70.0,32.0,196.0,28.0
-2023-12-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1256,1043,73000.86,70.0,32.0,196.0,28.0
-2024-01-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1250,1038,72641.27,70.0,32.0,196.0,28.0
-2024-02-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1181,980,68620.81,70.0,32.0,196.0,28.0
-2024-03-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1296,1076,75297.6,70.0,32.0,196.0,28.0
-2024-04-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1314,1091,76343.4,70.0,32.0,196.0,28.0
-2024-05-01,PJM,East,PECO,Affiliate,Month_to_Month,,residential,single_family,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
-2024-03-01,ERCOT,West,AEP_Texas,Affiliate,Term,12,residential,single_family,plan,864,726,61689.6,85.0,30.0,150.0,30.0
-2024-04-01,ERCOT,West,AEP_Texas,Affiliate,Term,12,residential,single_family,plan,876,736,62546.4,85.0,30.0,150.0,30.0
-2024-05-01,ERCOT,West,AEP_Texas,Affiliate,Term,12,residential,single_family,plan,942,791,67275.94,85.0,30.0,150.0,30.0
-2024-05-01,ERCOT,West,AEP_Texas,Broker,Term,24,large_C&I,,plan,598,490,61295.0,125.0,44.0,264.0,44.0
-2023-05-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,478,416,58269.12,140.0,46.0,288.0,48.0
-2023-06-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,470,409,57304.96,140.0,46.0,288.0,48.0
-2023-07-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,454,395,55248.48,140.0,46.0,288.0,48.0
-2023-08-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,492,428,59909.73,140.0,46.0,288.0,48.0
-2023-09-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,437,380,53202.24,140.0,46.0,288.0,48.0
-2023-10-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,440,383,53592.0,140.0,46.0,288.0,48.0
-2023-11-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,422,367,51448.32,140.0,46.0,288.0,48.0
-2023-12-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,391,340,47611.81,140.0,46.0,288.0,48.0
-2024-01-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,423,368,51545.76,140.0,46.0,288.0,48.0
-2024-02-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,391,340,47611.81,140.0,46.0,288.0,48.0
-2024-03-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,403,351,49109.76,140.0,46.0,288.0,48.0
-2024-04-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,440,383,53592.0,140.0,46.0,288.0,48.0
-2024-05-01,PJM,East,BGE,Broker,Term,36,large_C&I,,plan,478,416,58269.12,140.0,46.0,288.0,48.0
-2023-05-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1570,1335,96108.48,72.0,31.0,189.0,27.0
-2023-06-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1561,1327,95542.49,72.0,31.0,189.0,27.0
-2023-07-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1620,1377,99144.0,72.0,31.0,189.0,27.0
-2023-08-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1615,1372,98814.49,72.0,31.0,189.0,27.0
-2023-09-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1513,1286,92607.84,72.0,31.0,189.0,27.0
-2023-10-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1505,1279,92106.0,72.0,31.0,189.0,27.0
-2023-11-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1402,1191,85777.92,72.0,31.0,189.0,27.0
-2023-12-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1396,1187,85439.91,72.0,31.0,189.0,27.0
-2024-01-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1389,1181,85019.04,72.0,31.0,189.0,27.0
-2024-02-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1312,1115,80313.51,72.0,31.0,189.0,27.0
-2024-03-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1440,1224,88128.0,72.0,31.0,189.0,27.0
-2024-04-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1460,1241,89352.0,72.0,31.0,189.0,27.0
-2024-05-01,ERCOT,North,Oncor,Affiliate,Month_to_Month,,residential,multi_family,plan,1570,1335,96108.48,72.0,31.0,189.0,27.0
+2023-05-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1727,1486,136675.05,92.0,38.0,180.0,36.0
+2023-06-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1717,1477,135870.16,92.0,38.0,180.0,36.0
+2023-07-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1782,1533,140991.84,92.0,38.0,180.0,36.0
+2023-08-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1776,1527,140523.25,92.0,38.0,180.0,36.0
+2023-09-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1665,1431,131696.82,92.0,38.0,180.0,36.0
+2023-10-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1656,1424,130983.16,92.0,38.0,180.0,36.0
+2023-11-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1542,1326,121984.05,92.0,38.0,180.0,36.0
+2023-12-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1536,1321,121503.37,92.0,38.0,180.0,36.0
+2024-01-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1528,1314,120904.85,92.0,38.0,180.0,36.0
+2024-02-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1444,1241,114213.17,92.0,38.0,180.0,36.0
+2024-03-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1584,1362,125326.08,92.0,38.0,180.0,36.0
+2024-04-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1606,1381,127066.72,92.0,38.0,180.0,36.0
+2024-05-01,ERCOT,North,Oncor,Web_Direct,Term,24,residential,single_family,plan,1727,1486,136675.05,92.0,38.0,180.0,36.0
+2023-05-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1435,1263,123771.65,98.0,34.0,272.0,34.0
+2023-06-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1411,1242,121723.64,98.0,34.0,272.0,34.0
+2023-07-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1361,1198,117355.39,98.0,34.0,272.0,34.0
+2023-08-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1476,1299,127256.54,98.0,34.0,272.0,34.0
+2023-09-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1310,1153,113008.9,98.0,34.0,272.0,34.0
+2023-10-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1320,1162,113836.8,98.0,34.0,272.0,34.0
+2023-11-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1267,1115,109283.33,98.0,34.0,272.0,34.0
+2023-12-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1173,1032,101134.05,98.0,34.0,272.0,34.0
+2024-01-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1270,1117,109490.3,98.0,34.0,272.0,34.0
+2024-02-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1173,1032,101134.05,98.0,34.0,272.0,34.0
+2024-03-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1210,1064,104315.9,98.0,34.0,272.0,34.0
+2024-04-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1320,1162,113836.8,98.0,34.0,272.0,34.0
+2024-05-01,ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,plan,1435,1263,123771.65,98.0,34.0,272.0,34.0
+2023-05-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1148,976,107352.96,110.0,40.0,180.0,36.0
+2023-06-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1129,960,105576.63,110.0,40.0,180.0,36.0
+2023-07-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1089,925,101787.84,110.0,40.0,180.0,36.0
+2023-08-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1180,1003,110375.57,110.0,40.0,180.0,36.0
+2023-09-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1048,891,98017.92,110.0,40.0,180.0,36.0
+2023-10-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1056,898,98736.0,110.0,40.0,180.0,36.0
+2023-11-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1014,862,94786.56,110.0,40.0,180.0,36.0
+2023-12-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,938,797,87718.31,110.0,40.0,180.0,36.0
+2024-01-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1016,863,94966.08,110.0,40.0,180.0,36.0
+2024-02-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,938,797,87718.31,110.0,40.0,180.0,36.0
+2024-03-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,968,823,90478.08,110.0,40.0,180.0,36.0
+2024-04-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1056,898,98736.0,110.0,40.0,180.0,36.0
+2024-05-01,ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,plan,1148,976,107352.96,110.0,40.0,180.0,36.0
+2023-05-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1435,1263,113667.84,90.0,34.0,272.0,34.0
+2023-06-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1411,1242,111787.02,90.0,34.0,272.0,34.0
+2023-07-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1361,1198,107775.36,90.0,34.0,272.0,34.0
+2023-08-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1476,1299,116868.25,90.0,34.0,272.0,34.0
+2023-09-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1310,1153,103783.68,90.0,34.0,272.0,34.0
+2023-10-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1320,1162,104544.0,90.0,34.0,272.0,34.0
+2023-11-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1267,1115,100362.24,90.0,34.0,272.0,34.0
+2023-12-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1173,1032,92878.21,90.0,34.0,272.0,34.0
+2024-01-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1270,1117,100552.32,90.0,34.0,272.0,34.0
+2024-02-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1173,1032,92878.21,90.0,34.0,272.0,34.0
+2024-03-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1210,1064,95800.32,90.0,34.0,272.0,34.0
+2024-04-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1320,1162,104544.0,90.0,34.0,272.0,34.0
+2024-05-01,ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,plan,1435,1263,113667.84,90.0,34.0,272.0,34.0
+2023-05-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1099,945,122899.5,130.0,45.0,270.0,45.0
+2023-06-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1093,940,122175.74,130.0,45.0,270.0,45.0
+2023-07-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1134,975,126781.2,130.0,45.0,270.0,45.0
+2023-08-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1130,972,126359.84,130.0,45.0,270.0,45.0
+2023-09-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1059,911,118423.03,130.0,45.0,270.0,45.0
+2023-10-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1054,906,117781.3,130.0,45.0,270.0,45.0
+2023-11-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,981,844,109689.22,130.0,45.0,270.0,45.0
+2023-12-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,977,840,109256.98,130.0,45.0,270.0,45.0
+2024-01-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,972,836,108718.79,130.0,45.0,270.0,45.0
+2024-02-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,919,790,102701.56,130.0,45.0,270.0,45.0
+2024-03-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1008,867,112694.4,130.0,45.0,270.0,45.0
+2024-04-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1022,879,114259.6,130.0,45.0,270.0,45.0
+2024-05-01,PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,plan,1099,945,122899.5,130.0,45.0,270.0,45.0
+2023-05-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
+2023-06-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1405,1166,81632.63,70.0,32.0,196.0,28.0
+2023-07-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1458,1210,84709.8,70.0,32.0,196.0,28.0
+2023-08-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1453,1206,84428.26,70.0,32.0,196.0,28.0
+2023-09-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1362,1130,79125.23,70.0,32.0,196.0,28.0
+2023-10-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1354,1124,78696.45,70.0,32.0,196.0,28.0
+2023-11-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1261,1047,73289.66,70.0,32.0,196.0,28.0
+2023-12-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1256,1043,73000.86,70.0,32.0,196.0,28.0
+2024-01-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1250,1038,72641.27,70.0,32.0,196.0,28.0
+2024-02-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1181,980,68620.81,70.0,32.0,196.0,28.0
+2024-03-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1296,1076,75297.6,70.0,32.0,196.0,28.0
+2024-04-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1314,1091,76343.4,70.0,32.0,196.0,28.0
+2024-05-01,PJM,East,PECO,Online_Partner,Month_to_Month,,residential,single_family,plan,1413,1173,82116.22,70.0,32.0,196.0,28.0
+2024-03-01,ERCOT,West,AEP_Texas,Direct_Mail,Term,12,residential,single_family,plan,864,726,61689.6,85.0,30.0,150.0,30.0
+2024-04-01,ERCOT,West,AEP_Texas,Direct_Mail,Term,12,residential,single_family,plan,876,736,62546.4,85.0,30.0,150.0,30.0
+2024-05-01,ERCOT,West,AEP_Texas,Direct_Mail,Term,12,residential,single_family,plan,942,791,67275.94,85.0,30.0,150.0,30.0
+2024-05-01,ERCOT,West,AEP_Texas,Telemarketing,Term,24,large_C&I,,plan,598,490,61295.0,125.0,44.0,264.0,44.0
+2023-05-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,478,416,58269.12,140.0,46.0,288.0,48.0
+2023-06-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,470,409,57304.96,140.0,46.0,288.0,48.0
+2023-07-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,454,395,55248.48,140.0,46.0,288.0,48.0
+2023-08-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,492,428,59909.73,140.0,46.0,288.0,48.0
+2023-09-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,437,380,53202.24,140.0,46.0,288.0,48.0
+2023-10-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,440,383,53592.0,140.0,46.0,288.0,48.0
+2023-11-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,422,367,51448.32,140.0,46.0,288.0,48.0
+2023-12-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,391,340,47611.81,140.0,46.0,288.0,48.0
+2024-01-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,423,368,51545.76,140.0,46.0,288.0,48.0
+2024-02-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,391,340,47611.81,140.0,46.0,288.0,48.0
+2024-03-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,403,351,49109.76,140.0,46.0,288.0,48.0
+2024-04-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,440,383,53592.0,140.0,46.0,288.0,48.0
+2024-05-01,PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,plan,478,416,58269.12,140.0,46.0,288.0,48.0
+2023-05-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1570,1335,96108.48,72.0,31.0,189.0,27.0
+2023-06-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1561,1327,95542.49,72.0,31.0,189.0,27.0
+2023-07-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1620,1377,99144.0,72.0,31.0,189.0,27.0
+2023-08-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1615,1372,98814.49,72.0,31.0,189.0,27.0
+2023-09-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1513,1286,92607.84,72.0,31.0,189.0,27.0
+2023-10-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1505,1279,92106.0,72.0,31.0,189.0,27.0
+2023-11-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1402,1191,85777.92,72.0,31.0,189.0,27.0
+2023-12-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1396,1187,85439.91,72.0,31.0,189.0,27.0
+2024-01-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1389,1181,85019.04,72.0,31.0,189.0,27.0
+2024-02-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1312,1115,80313.51,72.0,31.0,189.0,27.0
+2024-03-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1440,1224,88128.0,72.0,31.0,189.0,27.0
+2024-04-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1460,1241,89352.0,72.0,31.0,189.0,27.0
+2024-05-01,ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,plan,1570,1335,96108.48,72.0,31.0,189.0,27.0
+2023-05-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1382,1188,133109.62,112.0,40.0,180.0,36.0
+2023-06-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1374,1181,132325.72,112.0,40.0,180.0,36.0
+2023-07-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1426,1226,137313.79,112.0,40.0,180.0,36.0
+2023-08-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1421,1222,136857.42,112.0,40.0,180.0,36.0
+2023-09-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1332,1145,128261.25,112.0,40.0,180.0,36.0
+2023-10-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1324,1139,127566.21,112.0,40.0,180.0,36.0
+2023-11-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1233,1061,118801.86,112.0,40.0,180.0,36.0
+2023-12-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1229,1057,118333.72,112.0,40.0,180.0,36.0
+2024-01-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1222,1051,117750.81,112.0,40.0,180.0,36.0
+2024-02-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1155,993,111233.69,112.0,40.0,180.0,36.0
+2024-03-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1267,1090,122056.7,112.0,40.0,180.0,36.0
+2024-04-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1285,1105,123751.94,112.0,40.0,180.0,36.0
+2024-05-01,PJM,East,PECO,Web_Direct,Term,12,residential,multi_family,plan,1382,1188,133109.62,112.0,40.0,180.0,36.0
+2023-05-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1316,1131,135769.92,120.0,40.0,152.0,38.0
+2023-06-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1294,1113,133523.39,120.0,40.0,152.0,38.0
+2023-07-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1247,1073,128731.68,120.0,40.0,152.0,38.0
+2023-08-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1353,1163,139592.63,120.0,40.0,152.0,38.0
+2023-09-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1201,1033,123963.84,120.0,40.0,152.0,38.0
+2023-10-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1210,1041,124872.0,120.0,40.0,152.0,38.0
+2023-11-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1162,999,119877.12,120.0,40.0,152.0,38.0
+2023-12-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1075,924,110937.86,120.0,40.0,152.0,38.0
+2024-01-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1164,1001,120104.16,120.0,40.0,152.0,38.0
+2024-02-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1075,924,110937.86,120.0,40.0,152.0,38.0
+2024-03-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1109,954,114428.16,120.0,40.0,152.0,38.0
+2024-04-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1210,1041,124872.0,120.0,40.0,152.0,38.0
+2024-05-01,ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,plan,1316,1131,135769.92,120.0,40.0,152.0,38.0

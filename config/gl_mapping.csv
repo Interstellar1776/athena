@@ -1,21 +1,22 @@
-cost_center,gl_account,entity,region,segment,spend_category
-CC-ONCOR-PS,6010,ERCOT,North,Paid Search,acquisition_marketing
-CC-ONCOR-PS,6900,ERCOT,North,Paid Search,overhead
-CC-ONCOR-DD,6010,ERCOT,North,Door_to_Door,acquisition_marketing
-CC-ONCOR-DD,6900,ERCOT,North,Door_to_Door,overhead
-CC-CENTERPOINT-PS,6010,ERCOT,South,Paid Search,acquisition_marketing
-CC-CENTERPOINT-PS,6900,ERCOT,South,Paid Search,overhead
-CC-CENTERPOINT-DD,6010,ERCOT,South,Door_to_Door,acquisition_marketing
-CC-CENTERPOINT-DD,6900,ERCOT,South,Door_to_Door,overhead
-CC-PECO-BR,6010,PJM,East,Broker,acquisition_marketing
-CC-PECO-BR,6900,PJM,East,Broker,overhead
-CC-PECO-AF,6010,PJM,East,Affiliate,acquisition_marketing
-CC-PECO-AF,6900,PJM,East,Affiliate,overhead
-CC-AEPTX-AF,6010,ERCOT,West,Affiliate,acquisition_marketing
-CC-AEPTX-AF,6900,ERCOT,West,Affiliate,overhead
-CC-AEPTX-BR,6010,ERCOT,West,Broker,acquisition_marketing
-CC-AEPTX-BR,6900,ERCOT,West,Broker,overhead
-CC-BGE-BR,6010,PJM,East,Broker,acquisition_marketing
-CC-BGE-BR,6900,PJM,East,Broker,overhead
-CC-ONCOR-AF,6010,ERCOT,North,Affiliate,acquisition_marketing
-CC-ONCOR-AF,6900,ERCOT,North,Affiliate,overhead
+cost_center,cost_center_description,gl_account,gl_account_description,vendor,segment,entity,region,spend_category
+5010,Web Direct,6010,Media,SearchAds Media,Web_Direct,ERCOT,North,acquisition_marketing
+5010,Web Direct,6010,Media,BidStream Digital,Web_Direct,ERCOT,North,acquisition_marketing
+5020,Door-to-Door Field Sales,6030,Commissions,FieldForce Sales LLC,Door_to_Door,ERCOT,South,acquisition_marketing
+5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,FieldForce Sales LLC,Door_to_Door,ERCOT,South,acquisition_marketing
+5030,Telemarketing,6020,Labor Hours,DialPro Teleservices,Telemarketing,ERCOT,North,acquisition_marketing
+5030,Telemarketing,6040,Bonuses & Incentives,DialPro Teleservices,Telemarketing,ERCOT,North,acquisition_marketing
+5030,Telemarketing,6020,Labor Hours,SouthDial Telesales,Telemarketing,ERCOT,South,acquisition_marketing
+5030,Telemarketing,6040,Bonuses & Incentives,SouthDial Telesales,Telemarketing,ERCOT,South,acquisition_marketing
+5050,Direct Mail,6010,Media,MailWorks Direct,Direct_Mail,PJM,East,acquisition_marketing
+5060,Online Partner,6030,Commissions,AffiliateHub Network,Online_Partner,PJM,East,acquisition_marketing
+5050,Direct Mail,6010,Media,PrintReach Mail,Direct_Mail,ERCOT,West,acquisition_marketing
+5030,Telemarketing,6020,Labor Hours,WestCall Telesales,Telemarketing,ERCOT,West,acquisition_marketing
+5030,Telemarketing,6040,Bonuses & Incentives,WestCall Telesales,Telemarketing,ERCOT,West,acquisition_marketing
+5040,Inbound Call Center,6020,Labor Hours,EastConnect Support,Inbound_Call_Center,PJM,East,acquisition_marketing
+5060,Online Partner,6030,Commissions,PartnerStream Online,Online_Partner,ERCOT,North,acquisition_marketing
+5010,Web Direct,6010,Media,MetroSearch Media,Web_Direct,PJM,East,acquisition_marketing
+5020,Door-to-Door Field Sales,6030,Commissions,DoorPoint Field Mktg,Door_to_Door,ERCOT,North,acquisition_marketing
+5020,Door-to-Door Field Sales,6030,Commissions,Summit Door Sales,Door_to_Door,ERCOT,North,acquisition_marketing
+5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,DoorPoint Field Mktg,Door_to_Door,ERCOT,North,acquisition_marketing
+5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,Summit Door Sales,Door_to_Door,ERCOT,North,acquisition_marketing
+5900,Corporate Overhead,6900,Overhead Allocation,Corporate Allocations,,,,overhead

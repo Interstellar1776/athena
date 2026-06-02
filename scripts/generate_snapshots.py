@@ -24,6 +24,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 # --- make the generators package importable, then import it ---
@@ -75,10 +76,11 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
             problems.append(f"operational_notes: unknown scope ({entity}, {region}, {segment})")
 
     # 3) gl_mapping.csv must equal the canonical mapping derived from shared.SERIES
-    #    (now keyed by cost_center, gl_account, entity, region, segment, spend_category).
-    cols = ["cost_center", "gl_account", "entity", "region", "segment", "spend_category"]
-    canon = {tuple(r[c] for c in cols) for r in shared.canonical_gl_mapping_rows()}
-    authored = {tuple(r) for r in gl_mapping[cols].itertuples(index=False, name=None)}
+    #    (keyed by cost_center, gl_account, vendor -> segment/entity/region/...).
+    cols = shared.GL_MAPPING_COLUMNS
+    gm = gl_mapping[cols].fillna("").astype(str)  # blank dims read back as NaN
+    canon = {tuple(str(r[c]) for c in cols) for r in shared.canonical_gl_mapping_rows()}
+    authored = {tuple(r) for r in gm.itertuples(index=False, name=None)}
     if canon != authored:
         missing, extra = canon - authored, authored - canon
         if missing:
@@ -86,13 +88,16 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
         if extra:
             problems.append(f"gl_mapping.csv has rows not in shared.SERIES: {sorted(extra)[:5]}")
 
-    # 4) Every GL cost_center maps via gl_mapping to a real series.
-    mapped_centers = set(gl_mapping["cost_center"])
-    for cc in set(gl["cost_center"]):
-        if cc not in mapped_centers:
-            problems.append(f"gl_actuals: cost_center '{cc}' not in gl_mapping.csv")
-        elif shared.series_by_cost_center(cc) is None:
-            problems.append(f"gl_actuals: cost_center '{cc}' maps to no series in shared.SERIES")
+    # 4) Every ledger (cost_center, gl_account, vendor) combo must resolve via the
+    #    mapping (the dimension-free ledger can only tie back to a gain that way).
+    map_combos = set(gl_mapping[["cost_center", "gl_account", "vendor"]]
+                     .astype(str).itertuples(index=False, name=None))
+    gl_combos = set(gl[["cost_center", "gl_account", "vendor"]]
+                    .astype(str).itertuples(index=False, name=None))
+    unresolved = gl_combos - map_combos
+    if unresolved:
+        problems.append(f"gl_actuals: {len(unresolved)} (cost_center,gl_account,vendor) combo(s) "
+                        f"not in gl_mapping.csv: {sorted(unresolved)[:5]}")
 
     # 5) Every series has a plan row covering the active period (fallback target).
     plan = reference[reference["reference_type"] == "plan"]
@@ -168,6 +173,13 @@ def print_summary(snapshots: dict, config) -> None:
     fallout = next(s for s in shared.SERIES if s.role == "fallout")
     new = next(s for s in shared.SERIES if s.role == "new")
 
+    # Ledger combos that resolve (via the mapping) to the hero unit's acquisition
+    # spend — the dimension-free ledger ties back to a channel only through this.
+    lookup = shared.canonical_gl_mapping_lookup()
+    hero_combos = {combo for combo, r in lookup.items()
+                   if r["spend_category"] == "acquisition_marketing"
+                   and (r["segment"], r["entity"], r["region"]) == (hero.segment, hero.entity, hero.region)}
+
     print("\n" + "=" * 78)
     print("SNAPSHOT SUMMARY — walk the arc (calm -> drift -> building -> confirmed HIGH -> final)")
     print("=" * 78)
@@ -177,15 +189,20 @@ def print_summary(snapshots: dict, config) -> None:
 
         # Hero active-period CPA = May acquisition spend (by document_date) / May
         # conversions present in the cut (by conversion_date — so the open period
-        # shows the gains that have actually landed).
-        g_acq_may = g[(g["gl_account"] == shared.GL_ACCOUNT_ACQUISITION)
-                      & (g["cost_center"] == hero.cost_center)
-                      & (g["document_date"].str.startswith(shared.ACTIVE_PERIOD))]
+        # shows the gains that have actually landed). Spend is selected by the
+        # ledger combos that map to the hero unit's acquisition spend.
+        g_combo = zip(g["cost_center"].astype(str), g["gl_account"].astype(str), g["vendor"])
+        combo_mask = np.array([c in hero_combos for c in g_combo])
+        may_mask = g["document_date"].str.startswith(shared.ACTIVE_PERIOD).to_numpy()
+        g_acq_may = g[combo_mask & may_mask]
         c_hero_may = _series_rows(c_df, hero)
         c_hero_may = c_hero_may[c_hero_may["conversion_date"].str.startswith(shared.ACTIVE_PERIOD)]
         conv = len(c_hero_may)
-        hero_cpa = (g_acq_may["amount"].sum() / conv) if conv else float("nan")
-        hero_var = (hero_cpa / hero.base_cpa - 1.0) * 100 if conv else float("nan")
+        hero_spend = g_acq_may["amount"].sum()
+        # No May acquisition spend posted yet (monthly/early) -> CPA would fall back
+        # to an estimate; show that rather than a misleading 0.
+        hero_cpa = (hero_spend / conv) if (conv and hero_spend > 0) else float("nan")
+        hero_var = (hero_cpa / hero.base_cpa - 1.0) * 100 if hero_cpa == hero_cpa else float("nan")
 
         # Fallout (trailing matured window), derived by anti-join. We look at the
         # fallout series' submissions in the 7 days ending at the maturity cutoff
@@ -282,7 +299,8 @@ def main(argv=None) -> int:
     notes = gen_notes.generate(config)
 
     # --- load static config + validate (halt loudly on any problem) ---
-    gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv", dtype={"gl_account": str})
+    gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv",
+                             dtype={"cost_center": str, "gl_account": str})
     try:
         validate(sales, conversions, gl, reference, notes, gl_mapping)
     except PipelineHalt as e:

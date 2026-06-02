@@ -207,6 +207,72 @@ removed the unused `cpa_spike_start_day` knob and the now-unused `OUTCOME_*` con
 
 ---
 
+## 2026 — Build Sequence 1 (revision 3: channel taxonomy + raw GL ledger)
+
+### Channel (`segment`) taxonomy revised to acquisition methods
+**Chose:** Replace the four generic segments (Paid Search / Door_to_Door / Broker / Affiliate)
+with six acquisition channels: Web_Direct, Door_to_Door, Telemarketing, Inbound_Call_Center,
+Direct_Mail, Online_Partner. Re-cast the roster to 12 curated series across them (every demo
+role + data-depth tier preserved). The hero moved Paid Search → Web_Direct; fallout stays
+Door_to_Door.
+**Rejected:** Keeping the four generic segments; or rolling finer GL methods up to them via the
+mapping (keeps a naming mismatch between the ledger and the gain channels).
+**Why:** The ledger's cost_center *is* the channel, so the gain channels and the GL channels
+must be the same vocabulary. A realistic acquisition-method taxonomy makes the ledger and the
+mapping read true. Cost: the sales/conversions/reference feeds re-generate (segments live on
+every feed), so this reaches back into the merged sales/gains work — accepted.
+
+### gl_actuals is a dimension-free raw ledger; meaning lives in a vendor-keyed mapping
+**Chose:** `gl_actuals.csv` carries only cost_center (= channel, numeric + description),
+gl_account (= expense type, numeric + description), amount, vendor, dates, description — no
+entity/region/segment. `gl_mapping.csv` keyed on **(cost_center, gl_account, vendor)** resolves
+each entry to (segment, entity, region, spend_category). CPA is computed at the channel ×
+geography grain. Kept a token overhead account for the spend_category split.
+**Rejected:** Carrying business dimensions on the ledger (today's shape); a 1:1
+cost_center→series map without vendor.
+**Why:** That's the real ERP→BI boundary — a GL is just cost centers, accounts, vendors and
+amounts; a mapping/allocation layer assigns business meaning. Vendor in the key is load-bearing:
+the same (cost_center, gl_account) resolves to different regions/channels by vendor (e.g.
+Door-to-Door 5020/6030 → ERCOT South via FieldForce, ERCOT North via DoorPoint).
+
+### Spend emitted as periodic invoices with per-channel cadence
+**Chose:** Replace daily aggregate rows with periodic per-vendor invoices billed in arrears —
+**weekly** for Web_Direct/Door_to_Door/Telemarketing/Inbound, **monthly** (month-end) for
+Direct_Mail/Online_Partner. A daily noise-free target (hero arc preserved) is aggregated into
+invoices; bonus channels book a monthly slice to account 6040; multi-vendor units split the
+invoice. Added a post-close **restatement** (May document, June-6 posting) alongside the
+existing late April invoice.
+**Rejected:** One aggregate row per day per channel.
+**Why:** Reads like a real ledger and the cadence *is* the demo: weekly channels show the spike
+progressing each snapshot; monthly channels have no in-month spend early, so their CPA falls
+back to an estimate until the post-close snapshot — exercising the GL completeness/estimation
+states for free. Also removes the $0 weekend-row artifact.
+
+---
+
+## 2026 — Build Sequence 1 (revision 4: hero on a face-to-face channel)
+
+### Hero moved to Door_to_Door (field sales); spike driven by commissions + incentives
+**Chose:** The CPA-spike hero is **Door_to_Door** (face-to-face field sales), not Web_Direct.
+Web_Direct stays as a stable "online advertising" channel; fallout moved to Telemarketing
+(agent turnover). The hero's spike rides its **weekly commission** ramp (visible across the
+pre-close snapshots) plus an **additive** month-end **incentive bonus** (account 6040) that
+lands only in the post-close snapshot. The conversion lag was tightened (mean 2 / max 4 days)
+so the weekday-only field channel's gains land within the snapshot cadence and the CPA climb
+stays visible.
+**Rejected:** Keeping the hero on Web_Direct; carving the bonus out of commissions (would
+flatten the visible pre-close spike); leaving the longer 3/7-day lag (left the climb masked by
+the lag's early conversion-undercount for the bursty weekday-only channel).
+**Why:** Digital/programmatic spend is flat and elastic (you set a budget, the platform spends
+it) — CPA there doesn't realistically balloon. CPA *does* run away on a labor-intensive
+face-to-face channel: chasing a Q2 target piles on commissions, short-term spiffs/incentives,
+and field hours while conversions stay flat. (Base salary is fixed opex, not a variable
+acquisition cost, so it's deliberately excluded.) This makes the headline spike read true, and
+the month-end incentive surge gives the post-close snapshot a second, realistic jump alongside
+the restatement. Supersedes revision 3's "hero → Web_Direct."
+
+---
+
 ## Template for new entries
 
 ```

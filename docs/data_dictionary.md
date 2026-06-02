@@ -18,7 +18,7 @@ enterprise data mart delivers pre-dimensioned facts:
 | entity | string | no | Market / ISO (e.g. ERCOT, PJM) — top of the geography | Must exist in the series roster |
 | region | string | no | Sub-market region (North/South/West/East) | Must exist in the series roster |
 | service_territory | string | no | Delivery utility / TDU under the market (Oncor, CenterPoint, AEP_Texas, PECO, BGE) | Must exist in the series roster |
-| segment | string | no | Acquisition channel / cohort / lane / SKU | Must exist in the series roster |
+| segment | string | no | Acquisition channel: `Web_Direct` / `Door_to_Door` / `Telemarketing` / `Inbound_Call_Center` / `Direct_Mail` / `Online_Partner` | Must exist in the series roster |
 | product_type | string | no | Term / Month_to_Month | Must match cogs_config |
 | contract_term_months | int | yes | Contract length for Term (12/24/36); **null for Month_to_Month** | If present ∈ {12,24,36} |
 | customer_size_tier | string | no | residential / small_C&I / large_C&I | — |
@@ -77,19 +77,29 @@ reporting lag. (Renamed from the former single `actuals.csv`; `revenue_per_unit`
 ---
 
 ## gl_actuals.csv
-Raw general-ledger spend entries. Joined to actuals via `gl_mapping`. Source of CPA actuals and late-invoice detection.
+Raw general-ledger spend — a **dimension-free** ledger. It carries no
+entity/region/segment; the business meaning is reconstructed via `gl_mapping.csv`
+keyed on `(cost_center, gl_account, vendor)`. Source of CPA actuals and
+late-invoice/restatement detection. `cost_center` = WHO spent (the acquisition
+channel), `gl_account` = WHAT (media / hours / commissions / bonuses / overhead).
 
 | Field | Type | Nullable | Definition | Validation / notes |
 |---|---|---|---|---|
-| posting_date | date | no | Date the entry hit the ledger | Must parse; not in the future |
-| document_date | date | no | Invoice/document date — the period the cost covers | Must parse; gap vs. posting_date drives late-invoice + accrued detection |
-| cost_center | string | no | Maps to entity/segment via gl_mapping | Must exist in gl_mapping |
-| gl_account | string | no | Maps to spend category via gl_mapping | Must exist in gl_mapping |
-| amount | float | no | Spend amount | No negative spend (validator sanity check) unless modeling reversals |
-| vendor | string | yes | Vendor name | — |
+| posting_date | date | no | Date the entry hit the ledger (snapshots cut on this) | Must parse; not in the future |
+| document_date | date | no | Invoice/document date — the period the cost covers | gap vs. posting_date drives late-invoice + accrued/restated detection |
+| cost_center | string (numeric code) | no | The acquisition channel / business unit (e.g. `5010`) | (cost_center, gl_account, vendor) must exist in gl_mapping |
+| cost_center_description | string | no | Human label (e.g. "Web Direct") | denormalized for ease of use |
+| gl_account | string (numeric code) | no | Expense type (e.g. `6010`) | must exist in gl_mapping |
+| gl_account_description | string | no | Human label (e.g. "Media") | denormalized |
+| amount | float | no | Spend amount | ≥ 0 (no negative spend unless modeling reversals) |
+| vendor | string | no | Supplier; part of the mapping key (resolves geography / disambiguates channel) | — |
 | description | string | yes | GL line description; feeds retrieval/context layer | Free text |
 
-*Generator notes:* to demo `restated`/`accrued` states, post an entry in a later snapshot with a `document_date` in an earlier period.
+*Generator notes:* spend is emitted as **periodic invoices** (per-channel cadence — see
+gl_mapping notes). The hero CPA spike is engineered here (its weekly media invoices ramp
+across the active period); sales/conversions stay flat. The engineered late April invoice
+(posts May, document April → `accrued`) and the post-close May true-up (posts June, document
+May → `restated`) exercise the completeness states.
 
 ---
 
@@ -136,13 +146,32 @@ Qualitative commentary. Feeds the context/retrieval layer and is what lets the n
 ## Config / reference tables (`/config`)
 
 ### gl_mapping.csv
+The bridge from the dimension-free ledger to the business. **One row per
+`(cost_center, gl_account, vendor)` combo** that appears in `gl_actuals.csv`,
+resolving it to a gain channel + geography. Must equal
+`shared.canonical_gl_mapping_rows()` (the orchestrator enforces this).
+
 | Field | Type | Notes |
 |---|---|---|
-| cost_center | string | GL cost center code |
-| gl_account | string | GL account number |
-| entity | string | Maps to Athena entity |
-| segment | string | Maps to Athena segment |
-| spend_category | string | e.g. acquisition_marketing, overhead |
+| cost_center | string | numeric channel code (e.g. `5010`); 1:1 with `segment` |
+| cost_center_description | string | label (e.g. "Web Direct") |
+| gl_account | string | numeric expense-type code (e.g. `6010`) |
+| gl_account_description | string | label (e.g. "Media") |
+| vendor | string | supplier; resolves geography and disambiguates channel — the same `(cost_center, gl_account)` can map to different `(entity, region)` via different vendors |
+| segment | string | resolved gain channel (blank for overhead) |
+| entity | string | resolved market (blank for overhead) |
+| region | string | resolved region (blank for overhead) |
+| spend_category | string | `acquisition_marketing` (ties to a gain) or `overhead` (token, mapped out of CPA) |
+
+*Invoice cadence (drives GL-completeness states):* per-channel — **weekly** for
+Door_to_Door (the hero, so its commission spike shows each snapshot), Web_Direct,
+Telemarketing, Inbound_Call_Center; **monthly** (posts at month-end, in arrears)
+for Direct_Mail and Online_Partner, so those channels have no in-month spend early
+and their CPA falls back to an estimate until the post-close snapshot. Channels
+with a bonus account (Door_to_Door, Telemarketing) use GL account `6040`: for
+non-hero channels it's a carved slice of acquisition spend; for the **hero** it's
+an *additive* Q2 incentive surge paid at month-end (extra CPA damage that lands
+only in the post-close snapshot, alongside the restatement).
 
 ### retention_config.csv
 Drives calculated LTV.
@@ -207,7 +236,7 @@ flowchart TD
     glmap["config/gl_mapping.csv<br/>(must equal canonical_gl_mapping_rows)"]
 
     shared --> gsales["gen_sales(config)<br/>→ sales.csv (submissions)"]
-    shared --> ggl["gen_gl(config)<br/>→ gl_actuals.csv (spend + late invoice)"]
+    shared --> ggl["gen_gl(config)<br/>→ gl_actuals.csv (periodic invoices + late/restatement)"]
     shared --> gref["gen_reference(config)<br/>→ reference_data.csv (plan/forecast)"]
     shared --> gnotes["gen_notes(config)<br/>→ operational_notes.csv"]
 
