@@ -1,0 +1,549 @@
+posting_date,document_date,cost_center,cost_center_description,gl_account,gl_account_description,amount,vendor,description
+2023-05-08,2023-05-08,5010,Web Direct,6010,Media,18015.09,GhostVendor Unmapped,Web Direct — Media — 2023-05
+2023-05-08,2023-05-08,5010,Web Direct,6010,Media,16504.07,BidStream Digital,Web Direct — Media — 2023-05
+2023-05-15,2023-05-15,5010,Web Direct,6010,Media,14098.61,SearchAds Media,Web Direct — Media — 2023-05
+2023-05-15,2023-05-15,5010,Web Direct,6010,Media,15813.4,BidStream Digital,Web Direct — Media — 2023-05
+2023-05-22,2023-05-22,5010,Web Direct,6010,Media,15975.09,SearchAds Media,Web Direct — Media — 2023-05
+2023-05-22,2023-05-22,5010,Web Direct,6010,Media,15694.91,BidStream Digital,Web Direct — Media — 2023-05
+2023-05-31,2023-05-31,5010,Web Direct,6010,Media,18769.36,SearchAds Media,Web Direct — Media — 2023-05
+2023-05-31,2023-05-31,5010,Web Direct,6010,Media,20369.41,BidStream Digital,Web Direct — Media — 2023-05
+2023-06-08,2023-06-08,5010,Web Direct,6010,Media,18810.58,SearchAds Media,Web Direct — Media — 2023-06
+2023-06-08,2023-06-08,5010,Web Direct,6010,Media,18892.11,BidStream Digital,Web Direct — Media — 2023-06
+2023-06-15,2023-06-15,5010,Web Direct,6010,Media,17294.96,SearchAds Media,Web Direct — Media — 2023-06
+2023-06-15,2023-06-15,5010,Web Direct,6010,Media,15739.63,BidStream Digital,Web Direct — Media — 2023-06
+2023-06-22,2023-06-22,5010,Web Direct,6010,Media,15200.46,SearchAds Media,Web Direct — Media — 2023-06
+2023-06-22,2023-06-22,5010,Web Direct,6010,Media,14803.73,BidStream Digital,Web Direct — Media — 2023-06
+2023-06-30,2023-06-30,5010,Web Direct,6010,Media,18460.49,SearchAds Media,Web Direct — Media — 2023-06
+2023-06-30,2023-06-30,5010,Web Direct,6010,Media,17663.43,BidStream Digital,Web Direct — Media — 2023-06
+2023-07-08,2023-07-08,5010,Web Direct,6010,Media,18118.81,SearchAds Media,Web Direct — Media — 2023-07
+2023-07-08,2023-07-08,5010,Web Direct,6010,Media,17742.87,BidStream Digital,Web Direct — Media — 2023-07
+2023-07-15,2023-07-15,5010,Web Direct,6010,Media,16044.57,SearchAds Media,Web Direct — Media — 2023-07
+2023-07-15,2023-07-15,5010,Web Direct,6010,Media,14244.16,BidStream Digital,Web Direct — Media — 2023-07
+2023-07-22,2023-07-22,5010,Web Direct,6010,Media,15390.49,SearchAds Media,Web Direct — Media — 2023-07
+2023-07-22,2023-07-22,5010,Web Direct,6010,Media,15367.95,BidStream Digital,Web Direct — Media — 2023-07
+2023-07-31,2023-07-31,5010,Web Direct,6010,Media,19777.8,SearchAds Media,Web Direct — Media — 2023-07
+2023-07-31,2023-07-31,5010,Web Direct,6010,Media,19911.26,BidStream Digital,Web Direct — Media — 2023-07
+2023-08-08,2023-08-08,5010,Web Direct,6010,Media,19338.63,SearchAds Media,Web Direct — Media — 2023-08
+2023-08-08,2023-08-08,5010,Web Direct,6010,Media,18380.13,BidStream Digital,Web Direct — Media — 2023-08
+2023-08-15,2023-08-15,5010,Web Direct,6010,Media,15602.93,SearchAds Media,Web Direct — Media — 2023-08
+2023-08-15,2023-08-15,5010,Web Direct,6010,Media,15085.61,BidStream Digital,Web Direct — Media — 2023-08
+2023-08-22,2023-08-22,5010,Web Direct,6010,Media,16119.92,SearchAds Media,Web Direct — Media — 2023-08
+2023-08-22,2023-08-22,5010,Web Direct,6010,Media,15429.68,BidStream Digital,Web Direct — Media — 2023-08
+2023-08-31,2023-08-31,5010,Web Direct,6010,Media,19806.25,SearchAds Media,Web Direct — Media — 2023-08
+2023-08-31,2023-08-31,5010,Web Direct,6010,Media,20708.7,BidStream Digital,Web Direct — Media — 2023-08
+2023-09-08,2023-09-08,5010,Web Direct,6010,Media,18657.29,SearchAds Media,Web Direct — Media — 2023-09
+2023-09-08,2023-09-08,5010,Web Direct,6010,Media,17354.67,BidStream Digital,Web Direct — Media — 2023-09
+2023-09-15,2023-09-15,5010,Web Direct,6010,Media,15802.99,SearchAds Media,Web Direct — Media — 2023-09
+2023-09-15,2023-09-15,5010,Web Direct,6010,Media,16065.89,BidStream Digital,Web Direct — Media — 2023-09
+2023-09-22,2023-09-22,5010,Web Direct,6010,Media,15135.3,SearchAds Media,Web Direct — Media — 2023-09
+2023-09-22,2023-09-22,5010,Web Direct,6010,Media,16680.06,BidStream Digital,Web Direct — Media — 2023-09
+2023-09-30,2023-09-30,5010,Web Direct,6010,Media,18552.05,SearchAds Media,Web Direct — Media — 2023-09
+2023-09-30,2023-09-30,5010,Web Direct,6010,Media,16892.83,BidStream Digital,Web Direct — Media — 2023-09
+2023-10-08,2023-10-08,5010,Web Direct,6010,Media,16314.12,SearchAds Media,Web Direct — Media — 2023-10
+2023-10-08,2023-10-08,5010,Web Direct,6010,Media,17300.98,BidStream Digital,Web Direct — Media — 2023-10
+2023-10-15,2023-10-15,5010,Web Direct,6010,Media,15198.75,SearchAds Media,Web Direct — Media — 2023-10
+2023-10-15,2023-10-15,5010,Web Direct,6010,Media,14625.78,BidStream Digital,Web Direct — Media — 2023-10
+2023-10-22,2023-10-22,5010,Web Direct,6010,Media,15857.34,SearchAds Media,Web Direct — Media — 2023-10
+2023-10-22,2023-10-22,5010,Web Direct,6010,Media,15215.99,BidStream Digital,Web Direct — Media — 2023-10
+2023-10-31,2023-10-31,5010,Web Direct,6010,Media,18977.96,SearchAds Media,Web Direct — Media — 2023-10
+2023-10-31,2023-10-31,5010,Web Direct,6010,Media,21134.18,BidStream Digital,Web Direct — Media — 2023-10
+2023-11-08,2023-11-08,5010,Web Direct,6010,Media,14855.95,SearchAds Media,Web Direct — Media — 2023-11
+2023-11-08,2023-11-08,5010,Web Direct,6010,Media,16177.21,BidStream Digital,Web Direct — Media — 2023-11
+2023-11-15,2023-11-15,5010,Web Direct,6010,Media,13677.03,SearchAds Media,Web Direct — Media — 2023-11
+2023-11-15,2023-11-15,5010,Web Direct,6010,Media,13936.97,BidStream Digital,Web Direct — Media — 2023-11
+2023-11-22,2023-11-22,5010,Web Direct,6010,Media,14338.2,SearchAds Media,Web Direct — Media — 2023-11
+2023-11-22,2023-11-22,5010,Web Direct,6010,Media,14402.51,BidStream Digital,Web Direct — Media — 2023-11
+2023-11-30,2023-11-30,5010,Web Direct,6010,Media,15951.25,SearchAds Media,Web Direct — Media — 2023-11
+2023-11-30,2023-11-30,5010,Web Direct,6010,Media,16710.83,BidStream Digital,Web Direct — Media — 2023-11
+2023-12-08,2023-12-08,5010,Web Direct,6010,Media,15544.38,SearchAds Media,Web Direct — Media — 2023-12
+2023-12-08,2023-12-08,5010,Web Direct,6010,Media,15025.04,BidStream Digital,Web Direct — Media — 2023-12
+2023-12-15,2023-12-15,5010,Web Direct,6010,Media,14145.11,SearchAds Media,Web Direct — Media — 2023-12
+2023-12-15,2023-12-15,5010,Web Direct,6010,Media,15010.42,BidStream Digital,Web Direct — Media — 2023-12
+2023-12-22,2023-12-22,5010,Web Direct,6010,Media,15201.55,SearchAds Media,Web Direct — Media — 2023-12
+2023-12-22,2023-12-22,5010,Web Direct,6010,Media,12667.39,BidStream Digital,Web Direct — Media — 2023-12
+2023-12-31,2023-12-31,5010,Web Direct,6010,Media,17755.06,SearchAds Media,Web Direct — Media — 2023-12
+2023-12-31,2023-12-31,5010,Web Direct,6010,Media,17357.7,BidStream Digital,Web Direct — Media — 2023-12
+2024-01-08,2024-01-08,5010,Web Direct,6010,Media,15260.24,SearchAds Media,Web Direct — Media — 2024-01
+2024-01-08,2024-01-08,5010,Web Direct,6010,Media,16389.92,BidStream Digital,Web Direct — Media — 2024-01
+2024-01-15,2024-01-15,5010,Web Direct,6010,Media,12662.15,SearchAds Media,Web Direct — Media — 2024-01
+2024-01-15,2024-01-15,5010,Web Direct,6010,Media,14069.55,BidStream Digital,Web Direct — Media — 2024-01
+2024-01-22,2024-01-22,5010,Web Direct,6010,Media,13898.02,SearchAds Media,Web Direct — Media — 2024-01
+2024-01-22,2024-01-22,5010,Web Direct,6010,Media,13632.73,BidStream Digital,Web Direct — Media — 2024-01
+2024-01-31,2024-01-31,5010,Web Direct,6010,Media,17109.27,SearchAds Media,Web Direct — Media — 2024-01
+2024-01-31,2024-01-31,5010,Web Direct,6010,Media,18335.08,BidStream Digital,Web Direct — Media — 2024-01
+2024-02-08,2024-02-08,5010,Web Direct,6010,Media,16843.92,SearchAds Media,Web Direct — Media — 2024-02
+2024-02-08,2024-02-08,5010,Web Direct,6010,Media,15490.56,BidStream Digital,Web Direct — Media — 2024-02
+2024-02-15,2024-02-15,5010,Web Direct,6010,Media,13623.92,SearchAds Media,Web Direct — Media — 2024-02
+2024-02-15,2024-02-15,5010,Web Direct,6010,Media,14340.93,BidStream Digital,Web Direct — Media — 2024-02
+2024-02-22,2024-02-22,5010,Web Direct,6010,Media,13209.82,SearchAds Media,Web Direct — Media — 2024-02
+2024-02-22,2024-02-22,5010,Web Direct,6010,Media,13429.8,BidStream Digital,Web Direct — Media — 2024-02
+2024-02-29,2024-02-29,5010,Web Direct,6010,Media,13640.98,SearchAds Media,Web Direct — Media — 2024-02
+2024-02-29,2024-02-29,5010,Web Direct,6010,Media,14190.63,BidStream Digital,Web Direct — Media — 2024-02
+2024-03-08,2024-03-08,5010,Web Direct,6010,Media,16413.69,SearchAds Media,Web Direct — Media — 2024-03
+2024-03-08,2024-03-08,5010,Web Direct,6010,Media,15968.46,BidStream Digital,Web Direct — Media — 2024-03
+2024-03-15,2024-03-15,5010,Web Direct,6010,Media,13123.19,SearchAds Media,Web Direct — Media — 2024-03
+2024-03-15,2024-03-15,5010,Web Direct,6010,Media,14184.39,BidStream Digital,Web Direct — Media — 2024-03
+2024-03-22,2024-03-22,5010,Web Direct,6010,Media,13639.69,SearchAds Media,Web Direct — Media — 2024-03
+2024-03-22,2024-03-22,5010,Web Direct,6010,Media,13215.29,BidStream Digital,Web Direct — Media — 2024-03
+2024-03-31,2024-03-31,5010,Web Direct,6010,Media,18108.06,SearchAds Media,Web Direct — Media — 2024-03
+2024-03-31,2024-03-31,5010,Web Direct,6010,Media,18992.72,BidStream Digital,Web Direct — Media — 2024-03
+2024-04-08,2024-04-08,5010,Web Direct,6010,Media,15785.54,SearchAds Media,Web Direct — Media — 2024-04
+2024-04-08,2024-04-08,5010,Web Direct,6010,Media,17070.29,BidStream Digital,Web Direct — Media — 2024-04
+2024-04-15,2024-04-15,5010,Web Direct,6010,Media,15509.31,SearchAds Media,Web Direct — Media — 2024-04
+2024-04-15,2024-04-15,5010,Web Direct,6010,Media,14317.81,BidStream Digital,Web Direct — Media — 2024-04
+2024-04-22,2024-04-22,5010,Web Direct,6010,Media,14307.0,SearchAds Media,Web Direct — Media — 2024-04
+2024-04-22,2024-04-22,5010,Web Direct,6010,Media,13554.2,BidStream Digital,Web Direct — Media — 2024-04
+2024-04-30,2024-04-30,5010,Web Direct,6010,Media,18092.76,SearchAds Media,Web Direct — Media — 2024-04
+2024-04-30,2024-04-30,5010,Web Direct,6010,Media,16255.2,BidStream Digital,Web Direct — Media — 2024-04
+2024-05-08,2024-05-08,5010,Web Direct,6010,Media,17670.68,SearchAds Media,Web Direct — Media — 2024-05
+2024-05-08,2024-05-08,5010,Web Direct,6010,Media,18940.12,BidStream Digital,Web Direct — Media — 2024-05
+2024-05-15,2024-05-15,5010,Web Direct,6010,Media,14350.15,SearchAds Media,Web Direct — Media — 2024-05
+2024-05-15,2024-05-15,5010,Web Direct,6010,Media,16095.53,BidStream Digital,Web Direct — Media — 2024-05
+2024-05-22,2024-05-22,5010,Web Direct,6010,Media,16904.96,SearchAds Media,Web Direct — Media — 2024-05
+2024-05-22,2024-05-22,5010,Web Direct,6010,Media,15029.3,BidStream Digital,Web Direct — Media — 2024-05
+2023-05-08,2023-05-08,5020,Door-to-Door Field Sales,6030,Commissions,26885.98,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-15,2023-05-15,5020,Door-to-Door Field Sales,6030,Commissions,22685.19,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-22,2023-05-22,5020,Door-to-Door Field Sales,6030,Commissions,22873.82,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-31,2023-05-31,5020,Door-to-Door Field Sales,6030,Commissions,30612.86,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-31,2023-05-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,18491.34,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-05
+2023-06-08,2023-06-08,5020,Door-to-Door Field Sales,6030,Commissions,29343.25,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-15,2023-06-15,5020,Door-to-Door Field Sales,6030,Commissions,23476.83,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-22,2023-06-22,5020,Door-to-Door Field Sales,6030,Commissions,25655.51,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-30,2023-06-30,5020,Door-to-Door Field Sales,6030,Commissions,29746.73,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-30,2023-06-30,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,17666.46,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-06
+2023-07-08,2023-07-08,5020,Door-to-Door Field Sales,6030,Commissions,23812.55,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-15,2023-07-15,5020,Door-to-Door Field Sales,6030,Commissions,25277.21,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-22,2023-07-22,5020,Door-to-Door Field Sales,6030,Commissions,22167.63,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-31,2023-07-31,5020,Door-to-Door Field Sales,6030,Commissions,28562.8,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-31,2023-07-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,18162.53,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-07
+2023-08-08,2023-08-08,5020,Door-to-Door Field Sales,6030,Commissions,29313.04,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-15,2023-08-15,5020,Door-to-Door Field Sales,6030,Commissions,22461.11,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-22,2023-08-22,5020,Door-to-Door Field Sales,6030,Commissions,23726.98,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-31,2023-08-31,5020,Door-to-Door Field Sales,6030,Commissions,31738.59,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-31,2023-08-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,17764.37,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-08
+2023-09-08,2023-09-08,5020,Door-to-Door Field Sales,6030,Commissions,27439.33,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-15,2023-09-15,5020,Door-to-Door Field Sales,6030,Commissions,21851.79,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-22,2023-09-22,5020,Door-to-Door Field Sales,6030,Commissions,21570.13,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-30,2023-09-30,5020,Door-to-Door Field Sales,6030,Commissions,21038.9,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-30,2023-09-30,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,15767.59,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-09
+2023-10-08,2023-10-08,5020,Door-to-Door Field Sales,6030,Commissions,20430.18,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-15,2023-10-15,5020,Door-to-Door Field Sales,6030,Commissions,22472.5,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-22,2023-10-22,5020,Door-to-Door Field Sales,6030,Commissions,20764.21,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-31,2023-10-31,5020,Door-to-Door Field Sales,6030,Commissions,30545.1,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-31,2023-10-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,17971.35,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-10
+2023-11-08,2023-11-08,5020,Door-to-Door Field Sales,6030,Commissions,26587.9,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-15,2023-11-15,5020,Door-to-Door Field Sales,6030,Commissions,20782.48,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-22,2023-11-22,5020,Door-to-Door Field Sales,6030,Commissions,22468.64,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-30,2023-11-30,5020,Door-to-Door Field Sales,6030,Commissions,25697.77,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-30,2023-11-30,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,17738.29,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-11
+2023-12-08,2023-12-08,5020,Door-to-Door Field Sales,6030,Commissions,22593.38,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-15,2023-12-15,5020,Door-to-Door Field Sales,6030,Commissions,20398.92,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-22,2023-12-22,5020,Door-to-Door Field Sales,6030,Commissions,20498.28,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-31,2023-12-31,5020,Door-to-Door Field Sales,6030,Commissions,21029.36,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-31,2023-12-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,15491.26,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2023-12
+2024-01-08,2024-01-08,5020,Door-to-Door Field Sales,6030,Commissions,23367.99,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-15,2024-01-15,5020,Door-to-Door Field Sales,6030,Commissions,19923.47,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-22,2024-01-22,5020,Door-to-Door Field Sales,6030,Commissions,18513.93,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-31,2024-01-31,5020,Door-to-Door Field Sales,6030,Commissions,28050.05,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-31,2024-01-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,15846.21,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2024-01
+2024-02-08,2024-02-08,5020,Door-to-Door Field Sales,6030,Commissions,25678.08,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-15,2024-02-15,5020,Door-to-Door Field Sales,6030,Commissions,19507.5,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-22,2024-02-22,5020,Door-to-Door Field Sales,6030,Commissions,20450.17,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-29,2024-02-29,5020,Door-to-Door Field Sales,6030,Commissions,21814.39,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-29,2024-02-29,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,14364.75,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2024-02
+2024-03-08,2024-03-08,5020,Door-to-Door Field Sales,6030,Commissions,27483.82,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-15,2024-03-15,5020,Door-to-Door Field Sales,6030,Commissions,20432.84,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-22,2024-03-22,5020,Door-to-Door Field Sales,6030,Commissions,20713.35,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-31,2024-03-31,5020,Door-to-Door Field Sales,6030,Commissions,20237.09,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-31,2024-03-31,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,14805.57,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2024-03
+2024-04-08,2024-04-08,5020,Door-to-Door Field Sales,6030,Commissions,29108.92,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-15,2024-04-15,5020,Door-to-Door Field Sales,6030,Commissions,20558.11,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-22,2024-04-22,5020,Door-to-Door Field Sales,6030,Commissions,23059.69,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-30,2024-04-30,5020,Door-to-Door Field Sales,6030,Commissions,26903.29,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-30,2024-04-30,5020,Door-to-Door Field Sales,6040,Bonuses & Incentives,17374.11,FieldForce Sales LLC,Door-to-Door Field Sales — Bonuses & Incentives — 2024-04
+2024-05-08,2024-05-08,5020,Door-to-Door Field Sales,6030,Commissions,27851.13,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-15,2024-05-15,5020,Door-to-Door Field Sales,6030,Commissions,24339.76,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-22,2024-05-22,5020,Door-to-Door Field Sales,6030,Commissions,21702.78,FieldForce Sales LLC,Door-to-Door Field Sales — Commissions — 2024-05
+2023-05-08,2023-05-08,5030,Telemarketing,6020,Labor Hours,22580.19,DialPro Teleservices,Telemarketing — Labor Hours — 2023-05
+2023-05-15,2023-05-15,5030,Telemarketing,6020,Labor Hours,21330.04,DialPro Teleservices,Telemarketing — Labor Hours — 2023-05
+2023-05-22,2023-05-22,5030,Telemarketing,6020,Labor Hours,21377.9,DialPro Teleservices,Telemarketing — Labor Hours — 2023-05
+2023-05-31,2023-05-31,5030,Telemarketing,6020,Labor Hours,25787.08,DialPro Teleservices,Telemarketing — Labor Hours — 2023-05
+2023-05-31,2023-05-31,5030,Telemarketing,6040,Bonuses & Incentives,16614.07,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-05
+2023-06-08,2023-06-08,5030,Telemarketing,6020,Labor Hours,26417.08,DialPro Teleservices,Telemarketing — Labor Hours — 2023-06
+2023-06-15,2023-06-15,5030,Telemarketing,6020,Labor Hours,21075.26,DialPro Teleservices,Telemarketing — Labor Hours — 2023-06
+2023-06-22,2023-06-22,5030,Telemarketing,6020,Labor Hours,20684.85,DialPro Teleservices,Telemarketing — Labor Hours — 2023-06
+2023-06-30,2023-06-30,5030,Telemarketing,6020,Labor Hours,26345.94,DialPro Teleservices,Telemarketing — Labor Hours — 2023-06
+2023-06-30,2023-06-30,5030,Telemarketing,6040,Bonuses & Incentives,14685.07,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-06
+2023-07-08,2023-07-08,5030,Telemarketing,6020,Labor Hours,20813.49,DialPro Teleservices,Telemarketing — Labor Hours — 2023-07
+2023-07-15,2023-07-15,5030,Telemarketing,6020,Labor Hours,20806.53,DialPro Teleservices,Telemarketing — Labor Hours — 2023-07
+2023-07-22,2023-07-22,5030,Telemarketing,6020,Labor Hours,22996.51,DialPro Teleservices,Telemarketing — Labor Hours — 2023-07
+2023-07-31,2023-07-31,5030,Telemarketing,6020,Labor Hours,24551.41,DialPro Teleservices,Telemarketing — Labor Hours — 2023-07
+2023-07-31,2023-07-31,5030,Telemarketing,6040,Bonuses & Incentives,14141.14,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-07
+2023-08-08,2023-08-08,5030,Telemarketing,6020,Labor Hours,23401.18,DialPro Teleservices,Telemarketing — Labor Hours — 2023-08
+2023-08-15,2023-08-15,5030,Telemarketing,6020,Labor Hours,20557.32,DialPro Teleservices,Telemarketing — Labor Hours — 2023-08
+2023-08-22,2023-08-22,5030,Telemarketing,6020,Labor Hours,20967.31,DialPro Teleservices,Telemarketing — Labor Hours — 2023-08
+2023-08-31,2023-08-31,5030,Telemarketing,6020,Labor Hours,25882.01,DialPro Teleservices,Telemarketing — Labor Hours — 2023-08
+2023-08-31,2023-08-31,5030,Telemarketing,6040,Bonuses & Incentives,16571.78,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-08
+2023-09-08,2023-09-08,5030,Telemarketing,6020,Labor Hours,24698.29,DialPro Teleservices,Telemarketing — Labor Hours — 2023-09
+2023-09-15,2023-09-15,5030,Telemarketing,6020,Labor Hours,19801.64,DialPro Teleservices,Telemarketing — Labor Hours — 2023-09
+2023-09-22,2023-09-22,5030,Telemarketing,6020,Labor Hours,19677.62,DialPro Teleservices,Telemarketing — Labor Hours — 2023-09
+2023-09-30,2023-09-30,5030,Telemarketing,6020,Labor Hours,19881.45,DialPro Teleservices,Telemarketing — Labor Hours — 2023-09
+2023-09-30,2023-09-30,5030,Telemarketing,6040,Bonuses & Incentives,15106.54,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-09
+2023-10-08,2023-10-08,5030,Telemarketing,6020,Labor Hours,20395.01,DialPro Teleservices,Telemarketing — Labor Hours — 2023-10
+2023-10-15,2023-10-15,5030,Telemarketing,6020,Labor Hours,19719.47,DialPro Teleservices,Telemarketing — Labor Hours — 2023-10
+2023-10-22,2023-10-22,5030,Telemarketing,6020,Labor Hours,18188.67,DialPro Teleservices,Telemarketing — Labor Hours — 2023-10
+2023-10-31,2023-10-31,5030,Telemarketing,6020,Labor Hours,27113.85,DialPro Teleservices,Telemarketing — Labor Hours — 2023-10
+2023-10-31,2023-10-31,5030,Telemarketing,6040,Bonuses & Incentives,14281.62,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-10
+2023-11-08,2023-11-08,5030,Telemarketing,6020,Labor Hours,22594.45,DialPro Teleservices,Telemarketing — Labor Hours — 2023-11
+2023-11-15,2023-11-15,5030,Telemarketing,6020,Labor Hours,18595.5,DialPro Teleservices,Telemarketing — Labor Hours — 2023-11
+2023-11-22,2023-11-22,5030,Telemarketing,6020,Labor Hours,18811.97,DialPro Teleservices,Telemarketing — Labor Hours — 2023-11
+2023-11-30,2023-11-30,5030,Telemarketing,6020,Labor Hours,22432.43,DialPro Teleservices,Telemarketing — Labor Hours — 2023-11
+2023-11-30,2023-11-30,5030,Telemarketing,6040,Bonuses & Incentives,14267.37,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-11
+2023-12-08,2023-12-08,5030,Telemarketing,6020,Labor Hours,20676.87,DialPro Teleservices,Telemarketing — Labor Hours — 2023-12
+2023-12-15,2023-12-15,5030,Telemarketing,6020,Labor Hours,18696.06,DialPro Teleservices,Telemarketing — Labor Hours — 2023-12
+2023-12-22,2023-12-22,5030,Telemarketing,6020,Labor Hours,17899.09,DialPro Teleservices,Telemarketing — Labor Hours — 2023-12
+2023-12-31,2023-12-31,5030,Telemarketing,6020,Labor Hours,17844.36,DialPro Teleservices,Telemarketing — Labor Hours — 2023-12
+2023-12-31,2023-12-31,5030,Telemarketing,6040,Bonuses & Incentives,14234.87,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2023-12
+2024-01-08,2024-01-08,5030,Telemarketing,6020,Labor Hours,21211.58,DialPro Teleservices,Telemarketing — Labor Hours — 2024-01
+2024-01-15,2024-01-15,5030,Telemarketing,6020,Labor Hours,17690.88,DialPro Teleservices,Telemarketing — Labor Hours — 2024-01
+2024-01-22,2024-01-22,5030,Telemarketing,6020,Labor Hours,16289.88,DialPro Teleservices,Telemarketing — Labor Hours — 2024-01
+2024-01-31,2024-01-31,5030,Telemarketing,6020,Labor Hours,23962.1,DialPro Teleservices,Telemarketing — Labor Hours — 2024-01
+2024-01-31,2024-01-31,5030,Telemarketing,6040,Bonuses & Incentives,13888.34,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2024-01
+2024-02-08,2024-02-08,5030,Telemarketing,6020,Labor Hours,22344.32,DialPro Teleservices,Telemarketing — Labor Hours — 2024-02
+2024-02-15,2024-02-15,5030,Telemarketing,6020,Labor Hours,17973.26,DialPro Teleservices,Telemarketing — Labor Hours — 2024-02
+2024-02-22,2024-02-22,5030,Telemarketing,6020,Labor Hours,18430.36,DialPro Teleservices,Telemarketing — Labor Hours — 2024-02
+2024-02-29,2024-02-29,5030,Telemarketing,6020,Labor Hours,17729.87,DialPro Teleservices,Telemarketing — Labor Hours — 2024-02
+2024-02-29,2024-02-29,5030,Telemarketing,6040,Bonuses & Incentives,13686.02,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2024-02
+2024-03-08,2024-03-08,5030,Telemarketing,6020,Labor Hours,22282.1,DialPro Teleservices,Telemarketing — Labor Hours — 2024-03
+2024-03-15,2024-03-15,5030,Telemarketing,6020,Labor Hours,18101.01,DialPro Teleservices,Telemarketing — Labor Hours — 2024-03
+2024-03-22,2024-03-22,5030,Telemarketing,6020,Labor Hours,18624.64,DialPro Teleservices,Telemarketing — Labor Hours — 2024-03
+2024-03-31,2024-03-31,5030,Telemarketing,6020,Labor Hours,18878.78,DialPro Teleservices,Telemarketing — Labor Hours — 2024-03
+2024-03-31,2024-03-31,5030,Telemarketing,6040,Bonuses & Incentives,13550.49,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2024-03
+2024-04-08,2024-04-08,5030,Telemarketing,6020,Labor Hours,22335.55,DialPro Teleservices,Telemarketing — Labor Hours — 2024-04
+2024-04-15,2024-04-15,5030,Telemarketing,6020,Labor Hours,19517.81,DialPro Teleservices,Telemarketing — Labor Hours — 2024-04
+2024-04-22,2024-04-22,5030,Telemarketing,6020,Labor Hours,18435.67,DialPro Teleservices,Telemarketing — Labor Hours — 2024-04
+2024-04-30,2024-04-30,5030,Telemarketing,6020,Labor Hours,24639.81,DialPro Teleservices,Telemarketing — Labor Hours — 2024-04
+2024-04-30,2024-04-30,5030,Telemarketing,6040,Bonuses & Incentives,14569.63,DialPro Teleservices,Telemarketing — Bonuses & Incentives — 2024-04
+2024-05-08,2024-05-08,5030,Telemarketing,6020,Labor Hours,23638.45,DialPro Teleservices,Telemarketing — Labor Hours — 2024-05
+2024-05-15,2024-05-15,5030,Telemarketing,6020,Labor Hours,19396.77,DialPro Teleservices,Telemarketing — Labor Hours — 2024-05
+2024-05-22,2024-05-22,5030,Telemarketing,6020,Labor Hours,20249.85,DialPro Teleservices,Telemarketing — Labor Hours — 2024-05
+2023-05-08,2023-05-08,5030,Telemarketing,6020,Labor Hours,25405.28,SouthDial Telesales,Telemarketing — Labor Hours — 2023-05
+2023-05-15,2023-05-15,5030,Telemarketing,6020,Labor Hours,21011.23,SouthDial Telesales,Telemarketing — Labor Hours — 2023-05
+2023-05-22,2023-05-22,5030,Telemarketing,6020,Labor Hours,21184.05,SouthDial Telesales,Telemarketing — Labor Hours — 2023-05
+2023-05-31,2023-05-31,5030,Telemarketing,6020,Labor Hours,29702.28,SouthDial Telesales,Telemarketing — Labor Hours — 2023-05
+2023-05-31,2023-05-31,5030,Telemarketing,6040,Bonuses & Incentives,17085.98,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-05
+2023-06-08,2023-06-08,5030,Telemarketing,6020,Labor Hours,25513.29,SouthDial Telesales,Telemarketing — Labor Hours — 2023-06
+2023-06-15,2023-06-15,5030,Telemarketing,6020,Labor Hours,21293.84,SouthDial Telesales,Telemarketing — Labor Hours — 2023-06
+2023-06-22,2023-06-22,5030,Telemarketing,6020,Labor Hours,21400.67,SouthDial Telesales,Telemarketing — Labor Hours — 2023-06
+2023-06-30,2023-06-30,5030,Telemarketing,6020,Labor Hours,26971.3,SouthDial Telesales,Telemarketing — Labor Hours — 2023-06
+2023-06-30,2023-06-30,5030,Telemarketing,6040,Bonuses & Incentives,17063.68,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-06
+2023-07-08,2023-07-08,5030,Telemarketing,6020,Labor Hours,21200.25,SouthDial Telesales,Telemarketing — Labor Hours — 2023-07
+2023-07-15,2023-07-15,5030,Telemarketing,6020,Labor Hours,21178.52,SouthDial Telesales,Telemarketing — Labor Hours — 2023-07
+2023-07-22,2023-07-22,5030,Telemarketing,6020,Labor Hours,21567.82,SouthDial Telesales,Telemarketing — Labor Hours — 2023-07
+2023-07-31,2023-07-31,5030,Telemarketing,6020,Labor Hours,27074.37,SouthDial Telesales,Telemarketing — Labor Hours — 2023-07
+2023-07-31,2023-07-31,5030,Telemarketing,6040,Bonuses & Incentives,16577.44,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-07
+2023-08-08,2023-08-08,5030,Telemarketing,6020,Labor Hours,26889.74,SouthDial Telesales,Telemarketing — Labor Hours — 2023-08
+2023-08-15,2023-08-15,5030,Telemarketing,6020,Labor Hours,21208.37,SouthDial Telesales,Telemarketing — Labor Hours — 2023-08
+2023-08-22,2023-08-22,5030,Telemarketing,6020,Labor Hours,22149.46,SouthDial Telesales,Telemarketing — Labor Hours — 2023-08
+2023-08-31,2023-08-31,5030,Telemarketing,6020,Labor Hours,29984.59,SouthDial Telesales,Telemarketing — Labor Hours — 2023-08
+2023-08-31,2023-08-31,5030,Telemarketing,6040,Bonuses & Incentives,17613.05,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-08
+2023-09-08,2023-09-08,5030,Telemarketing,6020,Labor Hours,25802.56,SouthDial Telesales,Telemarketing — Labor Hours — 2023-09
+2023-09-15,2023-09-15,5030,Telemarketing,6020,Labor Hours,19705.4,SouthDial Telesales,Telemarketing — Labor Hours — 2023-09
+2023-09-22,2023-09-22,5030,Telemarketing,6020,Labor Hours,20355.41,SouthDial Telesales,Telemarketing — Labor Hours — 2023-09
+2023-09-30,2023-09-30,5030,Telemarketing,6020,Labor Hours,21770.83,SouthDial Telesales,Telemarketing — Labor Hours — 2023-09
+2023-09-30,2023-09-30,5030,Telemarketing,6040,Bonuses & Incentives,16117.18,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-09
+2023-10-08,2023-10-08,5030,Telemarketing,6020,Labor Hours,21726.02,SouthDial Telesales,Telemarketing — Labor Hours — 2023-10
+2023-10-15,2023-10-15,5030,Telemarketing,6020,Labor Hours,21331.44,SouthDial Telesales,Telemarketing — Labor Hours — 2023-10
+2023-10-22,2023-10-22,5030,Telemarketing,6020,Labor Hours,21749.61,SouthDial Telesales,Telemarketing — Labor Hours — 2023-10
+2023-10-31,2023-10-31,5030,Telemarketing,6020,Labor Hours,30159.25,SouthDial Telesales,Telemarketing — Labor Hours — 2023-10
+2023-10-31,2023-10-31,5030,Telemarketing,6040,Bonuses & Incentives,16019.08,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-10
+2023-11-08,2023-11-08,5030,Telemarketing,6020,Labor Hours,22968.33,SouthDial Telesales,Telemarketing — Labor Hours — 2023-11
+2023-11-15,2023-11-15,5030,Telemarketing,6020,Labor Hours,19630.1,SouthDial Telesales,Telemarketing — Labor Hours — 2023-11
+2023-11-22,2023-11-22,5030,Telemarketing,6020,Labor Hours,20297.8,SouthDial Telesales,Telemarketing — Labor Hours — 2023-11
+2023-11-30,2023-11-30,5030,Telemarketing,6020,Labor Hours,24524.14,SouthDial Telesales,Telemarketing — Labor Hours — 2023-11
+2023-11-30,2023-11-30,5030,Telemarketing,6040,Bonuses & Incentives,15766.44,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-11
+2023-12-08,2023-12-08,5030,Telemarketing,6020,Labor Hours,24102.4,SouthDial Telesales,Telemarketing — Labor Hours — 2023-12
+2023-12-15,2023-12-15,5030,Telemarketing,6020,Labor Hours,17325.39,SouthDial Telesales,Telemarketing — Labor Hours — 2023-12
+2023-12-22,2023-12-22,5030,Telemarketing,6020,Labor Hours,18001.2,SouthDial Telesales,Telemarketing — Labor Hours — 2023-12
+2023-12-31,2023-12-31,5030,Telemarketing,6020,Labor Hours,18848.52,SouthDial Telesales,Telemarketing — Labor Hours — 2023-12
+2023-12-31,2023-12-31,5030,Telemarketing,6040,Bonuses & Incentives,14141.26,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2023-12
+2024-01-08,2024-01-08,5030,Telemarketing,6020,Labor Hours,21653.16,SouthDial Telesales,Telemarketing — Labor Hours — 2024-01
+2024-01-15,2024-01-15,5030,Telemarketing,6020,Labor Hours,17939.8,SouthDial Telesales,Telemarketing — Labor Hours — 2024-01
+2024-01-22,2024-01-22,5030,Telemarketing,6020,Labor Hours,18000.81,SouthDial Telesales,Telemarketing — Labor Hours — 2024-01
+2024-01-31,2024-01-31,5030,Telemarketing,6020,Labor Hours,25589.54,SouthDial Telesales,Telemarketing — Labor Hours — 2024-01
+2024-01-31,2024-01-31,5030,Telemarketing,6040,Bonuses & Incentives,15639.29,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2024-01
+2024-02-08,2024-02-08,5030,Telemarketing,6020,Labor Hours,23189.32,SouthDial Telesales,Telemarketing — Labor Hours — 2024-02
+2024-02-15,2024-02-15,5030,Telemarketing,6020,Labor Hours,19737.02,SouthDial Telesales,Telemarketing — Labor Hours — 2024-02
+2024-02-22,2024-02-22,5030,Telemarketing,6020,Labor Hours,18887.52,SouthDial Telesales,Telemarketing — Labor Hours — 2024-02
+2024-02-29,2024-02-29,5030,Telemarketing,6020,Labor Hours,18959.57,SouthDial Telesales,Telemarketing — Labor Hours — 2024-02
+2024-02-29,2024-02-29,5030,Telemarketing,6040,Bonuses & Incentives,14185.35,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2024-02
+2024-03-08,2024-03-08,5030,Telemarketing,6020,Labor Hours,24357.23,SouthDial Telesales,Telemarketing — Labor Hours — 2024-03
+2024-03-15,2024-03-15,5030,Telemarketing,6020,Labor Hours,19372.35,SouthDial Telesales,Telemarketing — Labor Hours — 2024-03
+2024-03-22,2024-03-22,5030,Telemarketing,6020,Labor Hours,19368.78,SouthDial Telesales,Telemarketing — Labor Hours — 2024-03
+2024-03-31,2024-03-31,5030,Telemarketing,6020,Labor Hours,18889.9,SouthDial Telesales,Telemarketing — Labor Hours — 2024-03
+2024-03-31,2024-03-31,5030,Telemarketing,6040,Bonuses & Incentives,13601.91,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2024-03
+2024-04-08,2024-04-08,5030,Telemarketing,6020,Labor Hours,25132.93,SouthDial Telesales,Telemarketing — Labor Hours — 2024-04
+2024-04-15,2024-04-15,5030,Telemarketing,6020,Labor Hours,21145.88,SouthDial Telesales,Telemarketing — Labor Hours — 2024-04
+2024-04-22,2024-04-22,5030,Telemarketing,6020,Labor Hours,20079.27,SouthDial Telesales,Telemarketing — Labor Hours — 2024-04
+2024-04-30,2024-04-30,5030,Telemarketing,6020,Labor Hours,23248.33,SouthDial Telesales,Telemarketing — Labor Hours — 2024-04
+2024-04-30,2024-04-30,5030,Telemarketing,6040,Bonuses & Incentives,15668.31,SouthDial Telesales,Telemarketing — Bonuses & Incentives — 2024-04
+2024-05-08,2024-05-08,5030,Telemarketing,6020,Labor Hours,25294.47,SouthDial Telesales,Telemarketing — Labor Hours — 2024-05
+2024-05-15,2024-05-15,5030,Telemarketing,6020,Labor Hours,21404.64,SouthDial Telesales,Telemarketing — Labor Hours — 2024-05
+2024-05-22,2024-05-22,5030,Telemarketing,6020,Labor Hours,19860.34,SouthDial Telesales,Telemarketing — Labor Hours — 2024-05
+2023-05-31,2023-05-31,5050,Direct Mail,6010,Media,119574.08,MailWorks Direct,Direct Mail — Media — 2023-05
+2023-06-30,2023-06-30,5050,Direct Mail,6010,Media,123912.27,MailWorks Direct,Direct Mail — Media — 2023-06
+2023-07-31,2023-07-31,5050,Direct Mail,6010,Media,131544.9,MailWorks Direct,Direct Mail — Media — 2023-07
+2023-08-31,2023-08-31,5050,Direct Mail,6010,Media,129119.42,MailWorks Direct,Direct Mail — Media — 2023-08
+2023-09-30,2023-09-30,5050,Direct Mail,6010,Media,121346.66,MailWorks Direct,Direct Mail — Media — 2023-09
+2023-10-31,2023-10-31,5050,Direct Mail,6010,Media,115755.76,MailWorks Direct,Direct Mail — Media — 2023-10
+2023-11-30,2023-11-30,5050,Direct Mail,6010,Media,105177.71,MailWorks Direct,Direct Mail — Media — 2023-11
+2023-12-31,2023-12-31,5050,Direct Mail,6010,Media,108671.83,MailWorks Direct,Direct Mail — Media — 2023-12
+2024-01-31,2024-01-31,5050,Direct Mail,6010,Media,103959.24,MailWorks Direct,Direct Mail — Media — 2024-01
+2024-02-29,2024-02-29,5050,Direct Mail,6010,Media,102121.21,MailWorks Direct,Direct Mail — Media — 2024-02
+2024-03-31,2024-03-31,5050,Direct Mail,6010,Media,109696.77,MailWorks Direct,Direct Mail — Media — 2024-03
+2024-04-30,2024-04-30,5050,Direct Mail,6010,Media,122879.94,MailWorks Direct,Direct Mail — Media — 2024-04
+2023-05-31,2023-05-31,5060,Online Partner,6030,Commissions,86495.09,AffiliateHub Network,Online Partner — Commissions — 2023-05
+2023-06-30,2023-06-30,5060,Online Partner,6030,Commissions,85222.4,AffiliateHub Network,Online Partner — Commissions — 2023-06
+2023-07-31,2023-07-31,5060,Online Partner,6030,Commissions,82649.75,AffiliateHub Network,Online Partner — Commissions — 2023-07
+2023-08-31,2023-08-31,5060,Online Partner,6030,Commissions,80910.47,AffiliateHub Network,Online Partner — Commissions — 2023-08
+2023-09-30,2023-09-30,5060,Online Partner,6030,Commissions,78149.43,AffiliateHub Network,Online Partner — Commissions — 2023-09
+2023-10-31,2023-10-31,5060,Online Partner,6030,Commissions,78339.66,AffiliateHub Network,Online Partner — Commissions — 2023-10
+2023-11-30,2023-11-30,5060,Online Partner,6030,Commissions,69948.08,AffiliateHub Network,Online Partner — Commissions — 2023-11
+2023-12-31,2023-12-31,5060,Online Partner,6030,Commissions,72357.64,AffiliateHub Network,Online Partner — Commissions — 2023-12
+2024-01-31,2024-01-31,5060,Online Partner,6030,Commissions,70202.15,AffiliateHub Network,Online Partner — Commissions — 2024-01
+2024-02-29,2024-02-29,5060,Online Partner,6030,Commissions,66109.15,AffiliateHub Network,Online Partner — Commissions — 2024-02
+2024-03-31,2024-03-31,5060,Online Partner,6030,Commissions,78818.58,AffiliateHub Network,Online Partner — Commissions — 2024-03
+2024-04-30,2024-04-30,5060,Online Partner,6030,Commissions,73429.74,AffiliateHub Network,Online Partner — Commissions — 2024-04
+2024-03-31,2024-03-31,5050,Direct Mail,6010,Media,64548.0,PrintReach Mail,Direct Mail — Media — 2024-03
+2024-04-30,2024-04-30,5050,Direct Mail,6010,Media,62597.71,PrintReach Mail,Direct Mail — Media — 2024-04
+2024-05-15,2024-05-15,5030,Telemarketing,6020,Labor Hours,2237.74,WestCall Telesales,Telemarketing — Labor Hours — 2024-05
+2024-05-22,2024-05-22,5030,Telemarketing,6020,Labor Hours,11746.73,WestCall Telesales,Telemarketing — Labor Hours — 2024-05
+2023-05-08,2023-05-08,5040,Inbound Call Center,6020,Labor Hours,16060.52,EastConnect Support,Inbound Call Center — Labor Hours — 2023-05
+2023-05-15,2023-05-15,5040,Inbound Call Center,6020,Labor Hours,12795.28,EastConnect Support,Inbound Call Center — Labor Hours — 2023-05
+2023-05-22,2023-05-22,5040,Inbound Call Center,6020,Labor Hours,13203.95,EastConnect Support,Inbound Call Center — Labor Hours — 2023-05
+2023-05-31,2023-05-31,5040,Inbound Call Center,6020,Labor Hours,17605.38,EastConnect Support,Inbound Call Center — Labor Hours — 2023-05
+2023-06-08,2023-06-08,5040,Inbound Call Center,6020,Labor Hours,14650.54,EastConnect Support,Inbound Call Center — Labor Hours — 2023-06
+2023-06-15,2023-06-15,5040,Inbound Call Center,6020,Labor Hours,12812.15,EastConnect Support,Inbound Call Center — Labor Hours — 2023-06
+2023-06-22,2023-06-22,5040,Inbound Call Center,6020,Labor Hours,12930.11,EastConnect Support,Inbound Call Center — Labor Hours — 2023-06
+2023-06-30,2023-06-30,5040,Inbound Call Center,6020,Labor Hours,15191.72,EastConnect Support,Inbound Call Center — Labor Hours — 2023-06
+2023-07-08,2023-07-08,5040,Inbound Call Center,6020,Labor Hours,12636.0,EastConnect Support,Inbound Call Center — Labor Hours — 2023-07
+2023-07-15,2023-07-15,5040,Inbound Call Center,6020,Labor Hours,13135.71,EastConnect Support,Inbound Call Center — Labor Hours — 2023-07
+2023-07-22,2023-07-22,5040,Inbound Call Center,6020,Labor Hours,13367.84,EastConnect Support,Inbound Call Center — Labor Hours — 2023-07
+2023-07-31,2023-07-31,5040,Inbound Call Center,6020,Labor Hours,15578.48,EastConnect Support,Inbound Call Center — Labor Hours — 2023-07
+2023-08-08,2023-08-08,5040,Inbound Call Center,6020,Labor Hours,14026.68,EastConnect Support,Inbound Call Center — Labor Hours — 2023-08
+2023-08-15,2023-08-15,5040,Inbound Call Center,6020,Labor Hours,12252.31,EastConnect Support,Inbound Call Center — Labor Hours — 2023-08
+2023-08-22,2023-08-22,5040,Inbound Call Center,6020,Labor Hours,13179.45,EastConnect Support,Inbound Call Center — Labor Hours — 2023-08
+2023-08-31,2023-08-31,5040,Inbound Call Center,6020,Labor Hours,17988.86,EastConnect Support,Inbound Call Center — Labor Hours — 2023-08
+2023-09-08,2023-09-08,5040,Inbound Call Center,6020,Labor Hours,15331.32,EastConnect Support,Inbound Call Center — Labor Hours — 2023-09
+2023-09-15,2023-09-15,5040,Inbound Call Center,6020,Labor Hours,13643.73,EastConnect Support,Inbound Call Center — Labor Hours — 2023-09
+2023-09-22,2023-09-22,5040,Inbound Call Center,6020,Labor Hours,13349.06,EastConnect Support,Inbound Call Center — Labor Hours — 2023-09
+2023-09-30,2023-09-30,5040,Inbound Call Center,6020,Labor Hours,13274.54,EastConnect Support,Inbound Call Center — Labor Hours — 2023-09
+2023-10-08,2023-10-08,5040,Inbound Call Center,6020,Labor Hours,13302.93,EastConnect Support,Inbound Call Center — Labor Hours — 2023-10
+2023-10-15,2023-10-15,5040,Inbound Call Center,6020,Labor Hours,11286.04,EastConnect Support,Inbound Call Center — Labor Hours — 2023-10
+2023-10-22,2023-10-22,5040,Inbound Call Center,6020,Labor Hours,12070.64,EastConnect Support,Inbound Call Center — Labor Hours — 2023-10
+2023-10-31,2023-10-31,5040,Inbound Call Center,6020,Labor Hours,15964.14,EastConnect Support,Inbound Call Center — Labor Hours — 2023-10
+2023-11-08,2023-11-08,5040,Inbound Call Center,6020,Labor Hours,13616.53,EastConnect Support,Inbound Call Center — Labor Hours — 2023-11
+2023-11-15,2023-11-15,5040,Inbound Call Center,6020,Labor Hours,11481.58,EastConnect Support,Inbound Call Center — Labor Hours — 2023-11
+2023-11-22,2023-11-22,5040,Inbound Call Center,6020,Labor Hours,10806.84,EastConnect Support,Inbound Call Center — Labor Hours — 2023-11
+2023-11-30,2023-11-30,5040,Inbound Call Center,6020,Labor Hours,14636.49,EastConnect Support,Inbound Call Center — Labor Hours — 2023-11
+2023-12-08,2023-12-08,5040,Inbound Call Center,6020,Labor Hours,13832.89,EastConnect Support,Inbound Call Center — Labor Hours — 2023-12
+2023-12-15,2023-12-15,5040,Inbound Call Center,6020,Labor Hours,11004.69,EastConnect Support,Inbound Call Center — Labor Hours — 2023-12
+2023-12-22,2023-12-22,5040,Inbound Call Center,6020,Labor Hours,10888.43,EastConnect Support,Inbound Call Center — Labor Hours — 2023-12
+2023-12-31,2023-12-31,5040,Inbound Call Center,6020,Labor Hours,11183.39,EastConnect Support,Inbound Call Center — Labor Hours — 2023-12
+2024-01-08,2024-01-08,5040,Inbound Call Center,6020,Labor Hours,13307.08,EastConnect Support,Inbound Call Center — Labor Hours — 2024-01
+2024-01-15,2024-01-15,5040,Inbound Call Center,6020,Labor Hours,11111.44,EastConnect Support,Inbound Call Center — Labor Hours — 2024-01
+2024-01-22,2024-01-22,5040,Inbound Call Center,6020,Labor Hours,10787.83,EastConnect Support,Inbound Call Center — Labor Hours — 2024-01
+2024-01-31,2024-01-31,5040,Inbound Call Center,6020,Labor Hours,16657.52,EastConnect Support,Inbound Call Center — Labor Hours — 2024-01
+2024-02-08,2024-02-08,5040,Inbound Call Center,6020,Labor Hours,13029.01,EastConnect Support,Inbound Call Center — Labor Hours — 2024-02
+2024-02-15,2024-02-15,5040,Inbound Call Center,6020,Labor Hours,11847.38,EastConnect Support,Inbound Call Center — Labor Hours — 2024-02
+2024-02-22,2024-02-22,5040,Inbound Call Center,6020,Labor Hours,10813.09,EastConnect Support,Inbound Call Center — Labor Hours — 2024-02
+2024-02-29,2024-02-29,5040,Inbound Call Center,6020,Labor Hours,10943.47,EastConnect Support,Inbound Call Center — Labor Hours — 2024-02
+2024-03-08,2024-03-08,5040,Inbound Call Center,6020,Labor Hours,14089.9,EastConnect Support,Inbound Call Center — Labor Hours — 2024-03
+2024-03-15,2024-03-15,5040,Inbound Call Center,6020,Labor Hours,12232.73,EastConnect Support,Inbound Call Center — Labor Hours — 2024-03
+2024-03-22,2024-03-22,5040,Inbound Call Center,6020,Labor Hours,10698.63,EastConnect Support,Inbound Call Center — Labor Hours — 2024-03
+2024-03-31,2024-03-31,5040,Inbound Call Center,6020,Labor Hours,12045.87,EastConnect Support,Inbound Call Center — Labor Hours — 2024-03
+2024-04-08,2024-04-08,5040,Inbound Call Center,6020,Labor Hours,14760.58,EastConnect Support,Inbound Call Center — Labor Hours — 2024-04
+2024-04-15,2024-04-15,5040,Inbound Call Center,6020,Labor Hours,12561.93,EastConnect Support,Inbound Call Center — Labor Hours — 2024-04
+2024-04-22,2024-04-22,5040,Inbound Call Center,6020,Labor Hours,11937.67,EastConnect Support,Inbound Call Center — Labor Hours — 2024-04
+2024-04-30,2024-04-30,5040,Inbound Call Center,6020,Labor Hours,14544.36,EastConnect Support,Inbound Call Center — Labor Hours — 2024-04
+2024-05-08,2024-05-08,5040,Inbound Call Center,6020,Labor Hours,15467.27,EastConnect Support,Inbound Call Center — Labor Hours — 2024-05
+2024-05-15,2024-05-15,5040,Inbound Call Center,6020,Labor Hours,12339.92,EastConnect Support,Inbound Call Center — Labor Hours — 2024-05
+2024-05-22,2024-05-22,5040,Inbound Call Center,6020,Labor Hours,11540.88,EastConnect Support,Inbound Call Center — Labor Hours — 2024-05
+2023-05-31,2023-05-31,5060,Online Partner,6030,Commissions,95545.26,PartnerStream Online,Online Partner — Commissions — 2023-05
+2023-06-30,2023-06-30,5060,Online Partner,6030,Commissions,100254.87,PartnerStream Online,Online Partner — Commissions — 2023-06
+2023-07-31,2023-07-31,5060,Online Partner,6030,Commissions,98275.2,PartnerStream Online,Online Partner — Commissions — 2023-07
+2023-08-31,2023-08-31,5060,Online Partner,6030,Commissions,106152.84,PartnerStream Online,Online Partner — Commissions — 2023-08
+2023-09-30,2023-09-30,5060,Online Partner,6030,Commissions,95099.87,PartnerStream Online,Online Partner — Commissions — 2023-09
+2023-10-31,2023-10-31,5060,Online Partner,6030,Commissions,92388.02,PartnerStream Online,Online Partner — Commissions — 2023-10
+2023-11-30,2023-11-30,5060,Online Partner,6030,Commissions,82555.96,PartnerStream Online,Online Partner — Commissions — 2023-11
+2023-12-31,2023-12-31,5060,Online Partner,6030,Commissions,85873.71,PartnerStream Online,Online Partner — Commissions — 2023-12
+2024-01-31,2024-01-31,5060,Online Partner,6030,Commissions,84026.22,PartnerStream Online,Online Partner — Commissions — 2024-01
+2024-02-29,2024-02-29,5060,Online Partner,6030,Commissions,78051.82,PartnerStream Online,Online Partner — Commissions — 2024-02
+2024-03-31,2024-03-31,5060,Online Partner,6030,Commissions,84338.62,PartnerStream Online,Online Partner — Commissions — 2024-03
+2024-04-30,2024-04-30,5060,Online Partner,6030,Commissions,95143.62,PartnerStream Online,Online Partner — Commissions — 2024-04
+2023-05-08,2023-05-08,5010,Web Direct,6010,Media,36474.02,MetroSearch Media,Web Direct — Media — 2023-05
+2023-05-15,2023-05-15,5010,Web Direct,6010,Media,29522.31,MetroSearch Media,Web Direct — Media — 2023-05
+2023-05-22,2023-05-22,5010,Web Direct,6010,Media,30561.13,MetroSearch Media,Web Direct — Media — 2023-05
+2023-05-31,2023-05-31,5010,Web Direct,6010,Media,39694.49,MetroSearch Media,Web Direct — Media — 2023-05
+2023-06-08,2023-06-08,5010,Web Direct,6010,Media,35428.79,MetroSearch Media,Web Direct — Media — 2023-06
+2023-06-15,2023-06-15,5010,Web Direct,6010,Media,30050.99,MetroSearch Media,Web Direct — Media — 2023-06
+2023-06-22,2023-06-22,5010,Web Direct,6010,Media,33180.18,MetroSearch Media,Web Direct — Media — 2023-06
+2023-06-30,2023-06-30,5010,Web Direct,6010,Media,34567.5,MetroSearch Media,Web Direct — Media — 2023-06
+2023-07-08,2023-07-08,5010,Web Direct,6010,Media,34078.35,MetroSearch Media,Web Direct — Media — 2023-07
+2023-07-15,2023-07-15,5010,Web Direct,6010,Media,31197.47,MetroSearch Media,Web Direct — Media — 2023-07
+2023-07-22,2023-07-22,5010,Web Direct,6010,Media,31683.81,MetroSearch Media,Web Direct — Media — 2023-07
+2023-07-31,2023-07-31,5010,Web Direct,6010,Media,37695.97,MetroSearch Media,Web Direct — Media — 2023-07
+2023-08-08,2023-08-08,5010,Web Direct,6010,Media,35911.92,MetroSearch Media,Web Direct — Media — 2023-08
+2023-08-15,2023-08-15,5010,Web Direct,6010,Media,31267.76,MetroSearch Media,Web Direct — Media — 2023-08
+2023-08-22,2023-08-22,5010,Web Direct,6010,Media,29455.85,MetroSearch Media,Web Direct — Media — 2023-08
+2023-08-31,2023-08-31,5010,Web Direct,6010,Media,40543.3,MetroSearch Media,Web Direct — Media — 2023-08
+2023-09-08,2023-09-08,5010,Web Direct,6010,Media,35299.75,MetroSearch Media,Web Direct — Media — 2023-09
+2023-09-15,2023-09-15,5010,Web Direct,6010,Media,31241.31,MetroSearch Media,Web Direct — Media — 2023-09
+2023-09-22,2023-09-22,5010,Web Direct,6010,Media,30160.92,MetroSearch Media,Web Direct — Media — 2023-09
+2023-09-30,2023-09-30,5010,Web Direct,6010,Media,31221.61,MetroSearch Media,Web Direct — Media — 2023-09
+2023-10-08,2023-10-08,5010,Web Direct,6010,Media,34772.4,MetroSearch Media,Web Direct — Media — 2023-10
+2023-10-15,2023-10-15,5010,Web Direct,6010,Media,31274.85,MetroSearch Media,Web Direct — Media — 2023-10
+2023-10-22,2023-10-22,5010,Web Direct,6010,Media,30943.1,MetroSearch Media,Web Direct — Media — 2023-10
+2023-10-31,2023-10-31,5010,Web Direct,6010,Media,38817.98,MetroSearch Media,Web Direct — Media — 2023-10
+2023-11-08,2023-11-08,5010,Web Direct,6010,Media,30016.69,MetroSearch Media,Web Direct — Media — 2023-11
+2023-11-15,2023-11-15,5010,Web Direct,6010,Media,27256.63,MetroSearch Media,Web Direct — Media — 2023-11
+2023-11-22,2023-11-22,5010,Web Direct,6010,Media,26785.84,MetroSearch Media,Web Direct — Media — 2023-11
+2023-11-30,2023-11-30,5010,Web Direct,6010,Media,33245.0,MetroSearch Media,Web Direct — Media — 2023-11
+2023-12-08,2023-12-08,5010,Web Direct,6010,Media,30755.46,MetroSearch Media,Web Direct — Media — 2023-12
+2023-12-15,2023-12-15,5010,Web Direct,6010,Media,25922.92,MetroSearch Media,Web Direct — Media — 2023-12
+2023-12-22,2023-12-22,5010,Web Direct,6010,Media,27835.88,MetroSearch Media,Web Direct — Media — 2023-12
+2023-12-31,2023-12-31,5010,Web Direct,6010,Media,33795.41,MetroSearch Media,Web Direct — Media — 2023-12
+2024-01-08,2024-01-08,5010,Web Direct,6010,Media,31384.4,MetroSearch Media,Web Direct — Media — 2024-01
+2024-01-15,2024-01-15,5010,Web Direct,6010,Media,26887.07,MetroSearch Media,Web Direct — Media — 2024-01
+2024-01-22,2024-01-22,5010,Web Direct,6010,Media,27366.06,MetroSearch Media,Web Direct — Media — 2024-01
+2024-01-31,2024-01-31,5010,Web Direct,6010,Media,36053.4,MetroSearch Media,Web Direct — Media — 2024-01
+2024-02-08,2024-02-08,5010,Web Direct,6010,Media,30588.89,MetroSearch Media,Web Direct — Media — 2024-02
+2024-02-15,2024-02-15,5010,Web Direct,6010,Media,26163.3,MetroSearch Media,Web Direct — Media — 2024-02
+2024-02-22,2024-02-22,5010,Web Direct,6010,Media,25483.88,MetroSearch Media,Web Direct — Media — 2024-02
+2024-02-29,2024-02-29,5010,Web Direct,6010,Media,27741.94,MetroSearch Media,Web Direct — Media — 2024-02
+2024-03-08,2024-03-08,5010,Web Direct,6010,Media,32115.8,MetroSearch Media,Web Direct — Media — 2024-03
+2024-03-15,2024-03-15,5010,Web Direct,6010,Media,27123.06,MetroSearch Media,Web Direct — Media — 2024-03
+2024-03-22,2024-03-22,5010,Web Direct,6010,Media,29768.49,MetroSearch Media,Web Direct — Media — 2024-03
+2024-03-31,2024-03-31,5010,Web Direct,6010,Media,36513.07,MetroSearch Media,Web Direct — Media — 2024-03
+2024-04-08,2024-04-08,5010,Web Direct,6010,Media,33624.23,MetroSearch Media,Web Direct — Media — 2024-04
+2024-04-15,2024-04-15,5010,Web Direct,6010,Media,26639.98,MetroSearch Media,Web Direct — Media — 2024-04
+2024-04-22,2024-04-22,5010,Web Direct,6010,Media,28559.56,MetroSearch Media,Web Direct — Media — 2024-04
+2024-04-30,2024-04-30,5010,Web Direct,6010,Media,33570.69,MetroSearch Media,Web Direct — Media — 2024-04
+2024-05-08,2024-05-08,5010,Web Direct,6010,Media,32029.18,MetroSearch Media,Web Direct — Media — 2024-05
+2024-05-15,2024-05-15,5010,Web Direct,6010,Media,29353.91,MetroSearch Media,Web Direct — Media — 2024-05
+2024-05-22,2024-05-22,5010,Web Direct,6010,Media,30424.41,MetroSearch Media,Web Direct — Media — 2024-05
+2023-05-08,2023-05-08,5020,Door-to-Door Field Sales,6030,Commissions,16414.95,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-08,2023-05-08,5020,Door-to-Door Field Sales,6030,Commissions,14757.16,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-15,2023-05-15,5020,Door-to-Door Field Sales,6030,Commissions,13406.18,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-15,2023-05-15,5020,Door-to-Door Field Sales,6030,Commissions,13229.05,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-22,2023-05-22,5020,Door-to-Door Field Sales,6030,Commissions,13524.71,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-22,2023-05-22,5020,Door-to-Door Field Sales,6030,Commissions,14074.99,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-31,2023-05-31,5020,Door-to-Door Field Sales,6030,Commissions,17653.15,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-05
+2023-05-31,2023-05-31,5020,Door-to-Door Field Sales,6030,Commissions,19935.67,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-05
+2023-06-08,2023-06-08,5020,Door-to-Door Field Sales,6030,Commissions,16188.19,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-08,2023-06-08,5020,Door-to-Door Field Sales,6030,Commissions,17616.21,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-15,2023-06-15,5020,Door-to-Door Field Sales,6030,Commissions,14212.18,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-15,2023-06-15,5020,Door-to-Door Field Sales,6030,Commissions,14012.03,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-22,2023-06-22,5020,Door-to-Door Field Sales,6030,Commissions,13308.66,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-22,2023-06-22,5020,Door-to-Door Field Sales,6030,Commissions,13455.31,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-30,2023-06-30,5020,Door-to-Door Field Sales,6030,Commissions,16984.48,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-06
+2023-06-30,2023-06-30,5020,Door-to-Door Field Sales,6030,Commissions,17673.8,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-06
+2023-07-08,2023-07-08,5020,Door-to-Door Field Sales,6030,Commissions,13222.71,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-08,2023-07-08,5020,Door-to-Door Field Sales,6030,Commissions,13078.99,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-15,2023-07-15,5020,Door-to-Door Field Sales,6030,Commissions,14022.52,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-15,2023-07-15,5020,Door-to-Door Field Sales,6030,Commissions,14201.21,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-22,2023-07-22,5020,Door-to-Door Field Sales,6030,Commissions,13133.0,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-22,2023-07-22,5020,Door-to-Door Field Sales,6030,Commissions,13439.19,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-31,2023-07-31,5020,Door-to-Door Field Sales,6030,Commissions,15805.91,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-07
+2023-07-31,2023-07-31,5020,Door-to-Door Field Sales,6030,Commissions,17717.12,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-07
+2023-08-08,2023-08-08,5020,Door-to-Door Field Sales,6030,Commissions,18162.1,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-08,2023-08-08,5020,Door-to-Door Field Sales,6030,Commissions,16883.41,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-15,2023-08-15,5020,Door-to-Door Field Sales,6030,Commissions,13515.53,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-15,2023-08-15,5020,Door-to-Door Field Sales,6030,Commissions,14845.45,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-22,2023-08-22,5020,Door-to-Door Field Sales,6030,Commissions,13509.96,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-22,2023-08-22,5020,Door-to-Door Field Sales,6030,Commissions,14144.38,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-31,2023-08-31,5020,Door-to-Door Field Sales,6030,Commissions,19586.88,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-08
+2023-08-31,2023-08-31,5020,Door-to-Door Field Sales,6030,Commissions,20355.61,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-08
+2023-09-08,2023-09-08,5020,Door-to-Door Field Sales,6030,Commissions,16404.01,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-08,2023-09-08,5020,Door-to-Door Field Sales,6030,Commissions,17141.59,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-15,2023-09-15,5020,Door-to-Door Field Sales,6030,Commissions,13760.07,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-15,2023-09-15,5020,Door-to-Door Field Sales,6030,Commissions,14532.21,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-22,2023-09-22,5020,Door-to-Door Field Sales,6030,Commissions,13047.96,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-22,2023-09-22,5020,Door-to-Door Field Sales,6030,Commissions,13397.4,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-30,2023-09-30,5020,Door-to-Door Field Sales,6030,Commissions,14688.45,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-09
+2023-09-30,2023-09-30,5020,Door-to-Door Field Sales,6030,Commissions,14837.46,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-09
+2023-10-08,2023-10-08,5020,Door-to-Door Field Sales,6030,Commissions,13965.06,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-08,2023-10-08,5020,Door-to-Door Field Sales,6030,Commissions,13907.84,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-15,2023-10-15,5020,Door-to-Door Field Sales,6030,Commissions,13038.98,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-15,2023-10-15,5020,Door-to-Door Field Sales,6030,Commissions,13207.14,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-22,2023-10-22,5020,Door-to-Door Field Sales,6030,Commissions,12513.04,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-22,2023-10-22,5020,Door-to-Door Field Sales,6030,Commissions,13548.3,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-31,2023-10-31,5020,Door-to-Door Field Sales,6030,Commissions,18909.66,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-10
+2023-10-31,2023-10-31,5020,Door-to-Door Field Sales,6030,Commissions,19993.11,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-10
+2023-11-08,2023-11-08,5020,Door-to-Door Field Sales,6030,Commissions,15632.92,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-08,2023-11-08,5020,Door-to-Door Field Sales,6030,Commissions,15303.69,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-15,2023-11-15,5020,Door-to-Door Field Sales,6030,Commissions,12958.45,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-15,2023-11-15,5020,Door-to-Door Field Sales,6030,Commissions,13296.05,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-22,2023-11-22,5020,Door-to-Door Field Sales,6030,Commissions,12918.21,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-22,2023-11-22,5020,Door-to-Door Field Sales,6030,Commissions,12599.04,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-30,2023-11-30,5020,Door-to-Door Field Sales,6030,Commissions,16337.07,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-11
+2023-11-30,2023-11-30,5020,Door-to-Door Field Sales,6030,Commissions,16429.3,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-11
+2023-12-08,2023-12-08,5020,Door-to-Door Field Sales,6030,Commissions,14684.25,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-08,2023-12-08,5020,Door-to-Door Field Sales,6030,Commissions,16416.14,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-15,2023-12-15,5020,Door-to-Door Field Sales,6030,Commissions,12663.32,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-15,2023-12-15,5020,Door-to-Door Field Sales,6030,Commissions,12616.52,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-22,2023-12-22,5020,Door-to-Door Field Sales,6030,Commissions,13176.37,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-22,2023-12-22,5020,Door-to-Door Field Sales,6030,Commissions,12875.73,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-31,2023-12-31,5020,Door-to-Door Field Sales,6030,Commissions,13006.25,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2023-12
+2023-12-31,2023-12-31,5020,Door-to-Door Field Sales,6030,Commissions,12159.15,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2023-12
+2024-01-08,2024-01-08,5020,Door-to-Door Field Sales,6030,Commissions,15298.48,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-08,2024-01-08,5020,Door-to-Door Field Sales,6030,Commissions,15318.29,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-15,2024-01-15,5020,Door-to-Door Field Sales,6030,Commissions,12787.8,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-15,2024-01-15,5020,Door-to-Door Field Sales,6030,Commissions,13111.95,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-22,2024-01-22,5020,Door-to-Door Field Sales,6030,Commissions,12594.56,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-22,2024-01-22,5020,Door-to-Door Field Sales,6030,Commissions,12222.93,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-31,2024-01-31,5020,Door-to-Door Field Sales,6030,Commissions,18089.64,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-01
+2024-01-31,2024-01-31,5020,Door-to-Door Field Sales,6030,Commissions,16658.25,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-01
+2024-02-08,2024-02-08,5020,Door-to-Door Field Sales,6030,Commissions,15285.83,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-08,2024-02-08,5020,Door-to-Door Field Sales,6030,Commissions,14412.26,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-15,2024-02-15,5020,Door-to-Door Field Sales,6030,Commissions,12597.13,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-15,2024-02-15,5020,Door-to-Door Field Sales,6030,Commissions,12634.11,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-22,2024-02-22,5020,Door-to-Door Field Sales,6030,Commissions,14269.34,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-22,2024-02-22,5020,Door-to-Door Field Sales,6030,Commissions,13320.94,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-29,2024-02-29,5020,Door-to-Door Field Sales,6030,Commissions,13160.52,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-02
+2024-02-29,2024-02-29,5020,Door-to-Door Field Sales,6030,Commissions,13262.03,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-02
+2024-03-08,2024-03-08,5020,Door-to-Door Field Sales,6030,Commissions,16065.81,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-08,2024-03-08,5020,Door-to-Door Field Sales,6030,Commissions,15807.46,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-15,2024-03-15,5020,Door-to-Door Field Sales,6030,Commissions,13306.24,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-15,2024-03-15,5020,Door-to-Door Field Sales,6030,Commissions,13568.9,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-22,2024-03-22,5020,Door-to-Door Field Sales,6030,Commissions,13709.7,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-22,2024-03-22,5020,Door-to-Door Field Sales,6030,Commissions,12211.97,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-31,2024-03-31,5020,Door-to-Door Field Sales,6030,Commissions,13372.66,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-03
+2024-03-31,2024-03-31,5020,Door-to-Door Field Sales,6030,Commissions,12794.83,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-03
+2024-04-08,2024-04-08,5020,Door-to-Door Field Sales,6030,Commissions,16439.62,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-08,2024-04-08,5020,Door-to-Door Field Sales,6030,Commissions,18762.39,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-15,2024-04-15,5020,Door-to-Door Field Sales,6030,Commissions,13834.5,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-15,2024-04-15,5020,Door-to-Door Field Sales,6030,Commissions,13695.67,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-22,2024-04-22,5020,Door-to-Door Field Sales,6030,Commissions,13770.36,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-22,2024-04-22,5020,Door-to-Door Field Sales,6030,Commissions,14090.63,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-30,2024-04-30,5020,Door-to-Door Field Sales,6030,Commissions,17849.54,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-04
+2024-04-30,2024-04-30,5020,Door-to-Door Field Sales,6030,Commissions,16830.35,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-04
+2024-05-08,2024-05-08,5020,Door-to-Door Field Sales,6030,Commissions,19395.29,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-08,2024-05-08,5020,Door-to-Door Field Sales,6030,Commissions,18571.1,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-15,2024-05-15,5020,Door-to-Door Field Sales,6030,Commissions,19058.25,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-15,2024-05-15,5020,Door-to-Door Field Sales,6030,Commissions,18652.41,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-22,2024-05-22,5020,Door-to-Door Field Sales,6030,Commissions,18621.27,DoorPoint Field Mktg,Door-to-Door Field Sales — Commissions — 2024-05
+2024-05-22,2024-05-22,5020,Door-to-Door Field Sales,6030,Commissions,18612.33,Summit Door Sales,Door-to-Door Field Sales — Commissions — 2024-05
+2023-05-31,2023-05-31,5900,Corporate Overhead,6900,Overhead Allocation,6137.49,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-05
+2023-06-30,2023-06-30,5900,Corporate Overhead,6900,Overhead Allocation,6508.55,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-06
+2023-07-31,2023-07-31,5900,Corporate Overhead,6900,Overhead Allocation,5762.49,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-07
+2023-08-31,2023-08-31,5900,Corporate Overhead,6900,Overhead Allocation,6158.55,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-08
+2023-09-30,2023-09-30,5900,Corporate Overhead,6900,Overhead Allocation,5774.33,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-09
+2023-10-31,2023-10-31,5900,Corporate Overhead,6900,Overhead Allocation,5987.29,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-10
+2023-11-30,2023-11-30,5900,Corporate Overhead,6900,Overhead Allocation,6350.66,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-11
+2023-12-31,2023-12-31,5900,Corporate Overhead,6900,Overhead Allocation,6253.83,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2023-12
+2024-01-31,2024-01-31,5900,Corporate Overhead,6900,Overhead Allocation,6459.51,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2024-01
+2024-02-29,2024-02-29,5900,Corporate Overhead,6900,Overhead Allocation,5054.26,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2024-02
+2024-03-31,2024-03-31,5900,Corporate Overhead,6900,Overhead Allocation,5769.31,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2024-03
+2024-04-30,2024-04-30,5900,Corporate Overhead,6900,Overhead Allocation,5828.06,Corporate Allocations,Corporate Overhead — Overhead Allocation — 2024-04
+2024-05-20,2024-04-27,5020,Door-to-Door Field Sales,6030,Commissions,9800.0,DoorPoint Field Mktg,Late vendor invoice for April field-sales commission overage — posted in May (prior-period accrual)
