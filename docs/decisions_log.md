@@ -273,6 +273,25 @@ the restatement. Supersedes revision 3's "hero → Web_Direct."
 
 ---
 
+## 2026 — Build Sequence 1 (revision 5: roster fan-out)
+
+### Each channel×geography unit fans into a product/customer mix
+**Chose:** Keep the ~12 channel×geography **units** as the economic backbone, but derive the
+record-level roster as **leaf series = units × a 2–3-combo mix** over `product_type` /
+`contract_term_months` / `customer_class`. The unit's volume splits across the mix by weight;
+**economics are uniform across a unit's leaves** (the finer dims are labels today). The
+record-level generators (sales/conversions/reference) iterate leaves; `gen_gl` and `gl_mapping`
+stay at the **unit** grain. `customer_size_tier` stays unit-level (no residential/C&I blend).
+**Rejected:** One tuple per channel×region (the finer dims were frozen single-values — nothing
+real to slice); fanning `customer_size_tier` too (would force uniform economics across very
+different customer types); making the dims drive economics now (deferred).
+**Why:** Real acquisition in a channel×region spans a mix of products/customers. Fanning out
+gives the data an honest cross-section to slice by, and sets up the structure now so the demo
+can show sub-segments — while the economic backbone (and the CPA/fallout story) is untouched.
+Differentiated economics per term/class/tier can be layered on later.
+
+---
+
 ## Template for new entries
 
 ```

@@ -124,7 +124,10 @@ def generate(config) -> pd.DataFrame:
     plus overhead, the late invoice and the post-close restatement."""
     rows = []
 
-    for s in shared.SERIES:
+    # Iterate UNITS, not leaf SERIES — spend is at the channel×geography grain
+    # (the mapping resolves there); the leaf product/customer mix only affects the
+    # record-level sales/conversions feeds.
+    for s in shared.UNITS:
         rng = shared.make_rng(f"gl:{s.segment}:{s.entity}:{s.region}")
         daily = _daily_spend(s, config)
         n_vendors = len(s.vendors)

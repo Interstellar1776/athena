@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 import numpy as np
@@ -343,7 +343,7 @@ class Series:
         return CHANNEL_GL[self.segment]["cadence"]
 
 
-SERIES: list[Series] = [
+UNITS: list[Series] = [
     # 1) Stable — Web_Direct (paid digital / online advertising). Flat, elastic
     #    cost (you set a budget; the platform spends it), so it does NOT spike —
     #    a well-behaved control. Two vendors (ad platforms) = the multi-vendor mix.
@@ -507,6 +507,75 @@ SERIES: list[Series] = [
 
 
 # ---------------------------------------------------------------------------
+# 5b. Product/customer mix — fan each channel×geography UNIT into leaf series
+# ---------------------------------------------------------------------------
+# A real channel×region acquires a MIX of products/terms/customer classes, not a
+# single flavor. Each UNIT above is the economic backbone (one set of economics +
+# total volume); its mix splits that volume across a few (product_type,
+# contract_term_months, customer_class, weight) combos. Economics are uniform
+# across a unit's leaves (the dims are labels today — they vary the *mix*, not the
+# per-unit numbers); only the volume is distributed by weight. customer_size_tier
+# stays unit-level (residential vs C&I are not blended under one channel×region).
+# Weights sum to 1 so leaf volumes sum back to the unit total.
+#
+# MixEntry = (product_type, contract_term_months, customer_class, weight).
+# Units default to a tier-appropriate mix; override a specific unit by key here.
+MIX_BY_UNIT = {
+    # Hero (Door_to_Door / ERCOT / North) — mostly long-term single-family.
+    ("Door_to_Door", "ERCOT", "North"): [
+        ("Term", 24, "single_family", 0.50),
+        ("Term", 12, "single_family", 0.30),
+        ("Month_to_Month", None, "multi_family", 0.20),
+    ],
+    # Digital skews month-to-month.
+    ("Web_Direct", "ERCOT", "North"): [
+        ("Month_to_Month", None, "single_family", 0.40),
+        ("Term", 12, "single_family", 0.35),
+        ("Month_to_Month", None, "multi_family", 0.25),
+    ],
+}
+
+
+def _default_mix(size_tier: str):
+    """Tier-appropriate fallback mix for units without an explicit MIX_BY_UNIT.
+    Residential fans product/term/class; C&I has no customer_class."""
+    if size_tier == "residential":
+        return [
+            ("Term", 12, "single_family", 0.45),
+            ("Term", 24, "single_family", 0.30),
+            ("Month_to_Month", None, "multi_family", 0.25),
+        ]
+    # small_C&I / large_C&I — commercial, no customer_class
+    return [
+        ("Term", 36, None, 0.55),
+        ("Term", 24, None, 0.45),
+    ]
+
+
+def _derive_leaf_series(units: list[Series]) -> list[Series]:
+    """Expand each UNIT into leaf Series by its mix: same economics, dims set from
+    the mix combo, base_volume_in split by weight. These leaves are what the
+    record-level generators (sales/conversions/reference) iterate; gen_gl works on
+    UNITS (spend stays at channel×geography grain)."""
+    leaves = []
+    for u in units:
+        mix = MIX_BY_UNIT.get((u.segment, u.entity, u.region)) or _default_mix(u.customer_size_tier)
+        for product_type, term, customer_class, weight in mix:
+            leaves.append(replace(
+                u,
+                product_type=product_type,
+                contract_term_months=term,
+                customer_class=customer_class,
+                base_volume_in=round(u.base_volume_in * weight, 4),
+            ))
+    return leaves
+
+
+# The leaf roster the record-level generators iterate (the join backbone).
+SERIES: list[Series] = _derive_leaf_series(UNITS)
+
+
+# ---------------------------------------------------------------------------
 # 6. Derived helpers
 # ---------------------------------------------------------------------------
 # Lookups and the canonical GL mapping derived from SERIES. The authored
@@ -552,7 +621,7 @@ def canonical_gl_mapping_rows() -> list[dict]:
     this table is what ties each entry back to its gain channel + geography),
     plus one token overhead row. Descriptions are carried for ease of use."""
     rows = []
-    for s in SERIES:
+    for s in UNITS:
         for account in series_acquisition_accounts(s):
             for vendor in s.vendors:
                 rows.append({

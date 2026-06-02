@@ -163,15 +163,16 @@ def write_table(df: pd.DataFrame, folder: Path, name: str, fmt: str) -> None:
 # ---------------------------------------------------------------------------
 # Inspection summary — the realism gate (Build Sequence step 1).
 # ---------------------------------------------------------------------------
-def _series_rows(df, s):
-    """Rows of df whose dimension tuple equals series s's key."""
-    return df[[k == s.key for k in _dim_keys(df)]]
+def _unit_rows(df, u):
+    """Rows of df belonging to a channel×geography unit (matched on
+    entity/region/segment) — a unit now spans several leaf series via its mix."""
+    return df[(df["entity"] == u.entity) & (df["region"] == u.region) & (df["segment"] == u.segment)]
 
 
 def print_summary(snapshots: dict, config) -> None:
-    hero = next(s for s in shared.SERIES if s.role == "hero")
-    fallout = next(s for s in shared.SERIES if s.role == "fallout")
-    new = next(s for s in shared.SERIES if s.role == "new")
+    hero = next(u for u in shared.UNITS if u.role == "hero")
+    fallout = next(u for u in shared.UNITS if u.role == "fallout")
+    new = next(u for u in shared.UNITS if u.role == "new")
 
     # Ledger combos that resolve (via the mapping) to the hero unit's acquisition
     # spend — the dimension-free ledger ties back to a channel only through this.
@@ -195,7 +196,7 @@ def print_summary(snapshots: dict, config) -> None:
         combo_mask = np.array([c in hero_combos for c in g_combo])
         may_mask = g["document_date"].str.startswith(shared.ACTIVE_PERIOD).to_numpy()
         g_acq_may = g[combo_mask & may_mask]
-        c_hero_may = _series_rows(c_df, hero)
+        c_hero_may = _unit_rows(c_df, hero)
         c_hero_may = c_hero_may[c_hero_may["conversion_date"].str.startswith(shared.ACTIVE_PERIOD)]
         conv = len(c_hero_may)
         hero_spend = g_acq_may["amount"].sum()
@@ -211,7 +212,7 @@ def print_summary(snapshots: dict, config) -> None:
         # cumulative MTD) reflects the *current* fallout rate, so the ramp shows.
         cutoff = dt.date.fromisoformat(snap_date) - dt.timedelta(days=config.conv_lag_max_days)
         window_start = (cutoff - dt.timedelta(days=7)).isoformat()
-        s_fo = _series_rows(s_df, fallout)
+        s_fo = _unit_rows(s_df, fallout)
         s_fo = s_fo[(s_fo["sale_date"] > window_start) & (s_fo["sale_date"] <= cutoff.isoformat())]
         fo_total = len(s_fo)
         matched = s_fo["customer_key"].isin(set(c_df["customer_key"])).sum()
@@ -220,7 +221,7 @@ def print_summary(snapshots: dict, config) -> None:
         # Late/accrued entries present (document month precedes posting month).
         late = g[g.apply(lambda x: x["document_date"][:7] < x["posting_date"][:7], axis=1)]
         n_forecast = int((r["reference_type"] == "forecast").sum())
-        new_sales = len(_series_rows(s_df, new))
+        new_sales = len(_unit_rows(s_df, new))
 
         print(f"\n[{snap_date}]  rows: sales={len(s_df)} conv={len(c_df)} gl={len(g)} "
               f"ref={len(r)} notes={len(n)}")

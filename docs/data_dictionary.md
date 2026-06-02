@@ -27,6 +27,15 @@ enterprise data mart delivers pre-dimensioned facts:
 A fact/reference row's full dimension tuple (these eight fields, in this order) is its join
 identity — it must match exactly one series in the roster.
 
+**Roster = units × mix.** The generator's backbone is ~12 channel×geography *units* (one set of
+economics + total volume each). Each unit fans out into a small **mix** of 2–3 leaf series
+across `product_type` / `contract_term_months` / `customer_class` — so a real channel×region
+carries a spread of products/customers, not a single flavor. The unit's volume is split across
+the mix by weight; **economics are uniform across a unit's leaves** (the product/customer dims
+vary the *mix*, not the per-unit numbers — they can be made to drive economics later).
+`customer_size_tier` stays unit-level (residential and C&I are not blended under one unit). GL
+spend and `gl_mapping` stay at the **unit** grain (the leaf mix doesn't affect the ledger).
+
 ---
 
 ## sales.csv
