@@ -297,6 +297,13 @@ class Series:
     cogs_overrides: dict = field(default_factory=dict)
     retention_overrides: dict = field(default_factory=dict)
 
+    # --- plan independent error (gen_reference) ---
+    # Optional. Makes the PLAN deviate from the noise-free actual baseline (a real
+    # plan is set independently and misses). Keys: "volume" and/or "cpa", as a
+    # fraction (e.g. {"volume": 0.08, "cpa": 0.04} = an over-budgeted plan).
+    # Empty => plan == baseline (today's clean behavior). Inherited onto leaves.
+    plan_bias: dict = field(default_factory=dict)
+
     def dims(self) -> dict:
         """The dimension columns this series stamps onto every row it produces.
         contract_term_months is stringified ('12'/None) so it round-trips through

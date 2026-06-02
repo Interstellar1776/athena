@@ -120,13 +120,25 @@ Plan and forecast targets. Same schema, distinguished by `reference_type`.
 | date | date | no | Reporting period (plan = first-of-month; forecast = issue date) | Must parse |
 | *(dimensions)* | — | — | The eight hierarchy fields (see *The dimension hierarchy* above) | Full tuple must match a series |
 | reference_type | string | no | `plan` or `forecast` | Must be one of the two |
-| volume_in_ref | int | no | Reference inbound volume | ≥ 0 |
-| volume_converted_ref | int | no | Reference conversions | ≥ 0 |
-| cost_ref | float | no | Reference spend (for CPA) | ≥ 0 |
-| cpa_ref | float | no | Reference CPA | ≥ 0 |
-| cogs_ref | float | no | Reference COGS per unit | ≥ 0 |
+| volume_in_ref | int | no | Reference inbound volume (**leaf grain** — vs. record-level sales aggregated per sub-segment) | ≥ 0 |
+| volume_converted_ref | int | no | Reference conversions (**leaf grain** — vs. conversions aggregated per sub-segment) | ≥ 0 |
+| cost_ref | float | no | Reference spend; the **unit plan cost allocated to the leaf** by planned conversions | ≥ 0 |
+| cpa_ref | float | no | Reference CPA (a **unit / channel×geography** target, repeated on the unit's leaves) | ≥ 0 |
+| cogs_ref | float | no | Reference COGS per unit — the **plan-COGS fallback** (§10); matches `cogs_config` (one source) | ≥ 0 |
 | ltv_ref | float | no | Reference LTV — fallback when calculated LTV unavailable | ≥ 0 |
 | margin_ref | float | no | Reference margin per unit — fallback | — |
+
+*Grain & GL tie-back:* **volume** targets are leaf-grain (compare to record-level actuals);
+**cost/CPA** targets are a unit (channel×geography) plan allocated across leaves, so
+`Σ cost_ref` over `(entity, region, segment)` is the unit's plan cost — which reconciles to
+actual GL acquisition spend (`gl_mapping` resolves GL to the same `(entity, region, segment)`),
+and `cpa_ref` is the plan CPA to compare against `GL spend ÷ conversions` at that grain. The
+orchestrator validates that **every acquisition unit `gl_mapping` resolves to has an
+active-period plan row.**
+
+*Plan realism:* `plan` volume/CPA default to the noise-free actual baseline (so the engineered
+spike/fallout is the only signal). A per-unit `plan_bias` ({"volume":…, "cpa":…}) can make the
+plan miss independently; empty by default.
 
 *Note:* `plan` rows are locked once a period begins; `forecast` rows update. The generator should emit at least `plan`; add `forecast` rows to demo the plan-vs-forecast-gap alert.
 

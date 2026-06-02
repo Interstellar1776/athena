@@ -319,6 +319,26 @@ one-source derivation removes the only real downside (the two drifting apart).
 
 ---
 
+## 2026 — Build Sequence 1 (revision 7: plan/forecast grain + GL tie-back)
+
+### Plan/forecast grain locked to actuals + GL; plan kept clean with a bias knob
+**Chose:** Make `reference_data`'s grain contract explicit and enforced: **volume** targets at
+sub-segment (leaf) grain (vs. record-level sales/conversions); **cost/CPA** targets a unit
+(channel×geography) plan allocated across leaves, so `Σ cost_ref` per `(entity, region, segment)`
+reconciles to actual GL spend (which `gl_mapping` resolves to the same key). Added a validator
+that every acquisition unit `gl_mapping` resolves to has an active-period plan row (every GL
+dollar has a plan CPA to compare). Plan volume/CPA stay the noise-free baseline by default; a
+per-unit `plan_bias` knob (empty default) allows realistic independent plan error later.
+**Rejected:** Baking plan error in now (would disturb the calibrated spike/fallout vs. calm
+contrast); a separate plan/forecast file (kept one `reference_data` per the data owner).
+**Why:** The plan is the comparison baseline and the bottom of every fallback chain — it must
+join cleanly to both the leaf-grain actuals and the unit-grain GL. The structure already did
+this (uniform `base_cpa` per unit); this revision documents + enforces it and adds the seam for
+realistic plan misses without touching today's demo signal. `plan_bias` empty ⇒ snapshots
+unchanged.
+
+---
+
 ## Template for new entries
 
 ```

@@ -125,10 +125,23 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping,
 
     # 5) Every series has a plan row covering the active period (fallback target).
     plan = reference[reference["reference_type"] == "plan"]
-    plan_keys_active = set(_dim_keys(plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)]))
+    plan_active = plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)]
+    plan_keys_active = set(_dim_keys(plan_active))
     for s in shared.SERIES:
         if s.key not in plan_keys_active:
             problems.append(f"reference_data: no active-period plan row for series {s.key}")
+
+    # 5b) GL tie-back: every acquisition channel×geography the ledger maps to must
+    #     have an active-period plan, so every actual GL dollar has a plan CPA to
+    #     compare against (Σ plan cost_ref per unit reconciles to GL spend there).
+    gl_acq_units = {(r["entity"], r["region"], r["segment"])
+                    for r in shared.canonical_gl_mapping_rows()
+                    if r["spend_category"] == "acquisition_marketing"}
+    plan_units = set(plan_active[["entity", "region", "segment"]].itertuples(index=False, name=None))
+    uncovered = gl_acq_units - plan_units
+    if uncovered:
+        problems.append(f"reference_data: gl_mapping acquisition unit(s) with no active-period "
+                        f"plan: {sorted(uncovered)}")
 
     # 6) Sales/conversions integrity — gains reconcile back to submissions on
     #    customer_key. Fallout is the unmatched complement (not stored), so the
