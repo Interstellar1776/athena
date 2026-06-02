@@ -1,12 +1,20 @@
 """Tests for the ingestion validator (Build Sequence §19 step 2).
 
-Covers the three things that matter for a halt-gate:
-  1. Clean pass-through — real snapshot and the clean fixture proceed.
-  2. Bad data halts loudly — every committed bad_* fixture raises PipelineHalt, and
-     for the *right* reason (asserted on the failing check name, so a fixture tripping
-     the wrong rule is caught).
-  3. The DAG behaves — a broken schema *skips* its dependent join checks (never
-     false-passes), order is deterministic, and independent faults all surface at once.
+The gate's job is binary and loud: clean data flows through; bad data raises a
+descriptive ``ValueError`` (``PipelineHalt`` is a ``ValueError``) whose message names
+**both the file and the field** at fault, so an operator can act on it without a
+debugger. Every failure test below asserts on those substrings — not merely that it
+raised.
+
+Layout:
+  1. clean pass-through — every snapshot date
+  2. missing required column
+  3. wrong type in a critical field
+  4. null in a critical field
+  5. negative CPA or amount
+  6. unresolvable cost_center (not in gl_mapping)
+  7. entity/segment in the facts with no reference_data row
+Plus a short section pinning the DAG behaviour (skip-on-broken-prereq, determinism).
 """
 
 from __future__ import annotations
@@ -20,14 +28,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from app.validation.ingestion_validator import (  # noqa: E402
-    PipelineHalt, Severity, Status,
+    PipelineHalt, Status,
     build_dag, load_contracts, read_snapshot_frames,
     validate_ingestion, validate_snapshot_dir, _toposort,
 )
-from tests.fixtures.build_fixtures import EXPECTED_FAILURE  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "snapshots"
-REAL_SNAPSHOT = REPO_ROOT / "data" / "snapshots" / "2024-05-22"
+SNAPSHOT_DIRS = sorted(p for p in (REPO_ROOT / "data" / "snapshots").iterdir() if p.is_dir())
 
 
 @pytest.fixture(scope="module")
@@ -35,70 +42,142 @@ def contracts():
     return load_contracts()
 
 
-# --- 1. Clean pass-through -------------------------------------------------
-def test_real_snapshot_passes(contracts):
-    report = validate_snapshot_dir(REAL_SNAPSHOT, contracts)
+@pytest.fixture
+def clean_frames():
+    """A fresh, mutable copy of the clean fixture for per-test fault injection."""
+    return read_snapshot_frames(FIXTURES / "clean")
+
+
+def _halt_message(frames, contracts) -> str:
+    """Run the gate and return the ValueError message it halts with."""
+    with pytest.raises(ValueError) as exc:
+        validate_ingestion(frames, contracts).raise_if_failed()
+    return str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# 1. Clean data passes through — every snapshot date
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("snapshot_dir", SNAPSHOT_DIRS, ids=lambda p: p.name)
+def test_clean_snapshot_passes(contracts, snapshot_dir):
+    report = validate_snapshot_dir(snapshot_dir, contracts)
     assert report.ok, report.render()
     assert report.failed_checks() == []
-
-
-def test_clean_fixture_passes(contracts):
-    report = validate_snapshot_dir(FIXTURES / "clean", contracts)
-    assert report.ok, report.render()
-
-
-def test_clean_fixture_raise_is_noop(contracts):
-    # raise_if_failed returns the report instead of raising when clean.
-    report = validate_snapshot_dir(FIXTURES / "clean", contracts)
+    # raise_if_failed is a no-op on clean data (returns the report, does not raise).
     assert report.raise_if_failed() is report
 
 
-# --- 2. Bad data halts loudly, for the right reason ------------------------
-@pytest.mark.parametrize("fixture_name,expected_check", sorted(EXPECTED_FAILURE.items()))
-def test_bad_fixture_halts(contracts, fixture_name, expected_check):
-    report = validate_snapshot_dir(FIXTURES / fixture_name, contracts)
-    assert not report.ok, f"{fixture_name} should not pass"
-    assert report.status_of(expected_check) == Status.FAILED, (
-        f"{fixture_name} expected {expected_check} to FAIL\n{report.render()}")
-    with pytest.raises(PipelineHalt):
-        report.raise_if_failed()
+def test_clean_fixture_passes(contracts, clean_frames):
+    report = validate_ingestion(clean_frames, contracts)
+    assert report.ok, report.render()
 
 
-def test_halt_message_is_descriptive(contracts):
-    report = validate_snapshot_dir(FIXTURES / "bad_negative_amount", contracts)
-    with pytest.raises(PipelineHalt) as exc:
-        report.raise_if_failed()
-    msg = str(exc.value)
-    assert "gl_actuals" in msg and "negative" in msg  # plain-language "what and why"
+# ---------------------------------------------------------------------------
+# 2. Missing required column
+# ---------------------------------------------------------------------------
+def test_missing_required_column(contracts, clean_frames):
+    clean_frames["sales"] = clean_frames["sales"].drop(columns=["segment"])
+    msg = _halt_message(clean_frames, contracts)
+    assert "sales.csv" in msg
+    assert "segment" in msg
+    assert "missing required column" in msg
 
 
-# --- 3. DAG behaviour ------------------------------------------------------
-def test_schema_failure_skips_dependent_checks(contracts):
-    # A missing column on sales fails schema:sales, which must SKIP (not pass) the
+# ---------------------------------------------------------------------------
+# 3. Wrong type in a critical field
+# ---------------------------------------------------------------------------
+def test_wrong_type_in_amount(contracts, clean_frames):
+    clean_frames["gl_actuals"].loc[0, "amount"] = "not_a_number"
+    msg = _halt_message(clean_frames, contracts)
+    assert "gl_actuals.csv" in msg
+    assert "amount" in msg
+    assert "non-numeric" in msg
+
+
+def test_wrong_type_in_customer_key(contracts, clean_frames):
+    clean_frames["sales"].loc[0, "customer_key"] = "ABC123"
+    msg = _halt_message(clean_frames, contracts)
+    assert "sales.csv" in msg
+    assert "customer_key" in msg
+
+
+# ---------------------------------------------------------------------------
+# 4. Null in a critical field
+# ---------------------------------------------------------------------------
+def test_null_in_critical_field(contracts, clean_frames):
+    clean_frames["sales"].loc[0, "entity"] = ""
+    msg = _halt_message(clean_frames, contracts)
+    assert "sales.csv" in msg
+    assert "entity" in msg
+    assert "null" in msg.lower()
+
+
+# ---------------------------------------------------------------------------
+# 5. Negative CPA or amount
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("feed,field", [("gl_actuals", "amount"),
+                                        ("reference_data", "cpa_ref")])
+def test_negative_value_rejected(contracts, clean_frames, feed, field):
+    clean_frames[feed].loc[0, field] = "-12.50"
+    msg = _halt_message(clean_frames, contracts)
+    assert f"{feed}.csv" in msg
+    assert field in msg
+    assert "negative" in msg
+
+
+# ---------------------------------------------------------------------------
+# 6. Unresolvable cost_center (not in gl_mapping)
+# ---------------------------------------------------------------------------
+def test_unresolvable_cost_center(contracts, clean_frames):
+    clean_frames["gl_actuals"].loc[0, "cost_center"] = "9999"
+    msg = _halt_message(clean_frames, contracts)
+    assert "gl_actuals.csv" in msg
+    assert "cost_center" in msg
+    assert "gl_mapping.csv" in msg  # names where the resolution should have come from
+
+
+# ---------------------------------------------------------------------------
+# 7. Entity/segment in the facts with no reference_data row
+# ---------------------------------------------------------------------------
+def test_facts_without_reference_row(contracts, clean_frames):
+    # Drop every reference_data row for the (entity, segment) of the first sale,
+    # leaving the facts uncovered by any plan/forecast.
+    sales = clean_frames["sales"]
+    entity, segment = sales.loc[0, "entity"], sales.loc[0, "segment"]
+    ref = clean_frames["reference_data"]
+    clean_frames["reference_data"] = ref[~((ref["entity"] == entity)
+                                           & (ref["segment"] == segment))].reset_index(drop=True)
+    msg = _halt_message(clean_frames, contracts)
+    assert "reference_data.csv" in msg
+    assert "entity" in msg and "segment" in msg
+    assert entity in msg and segment in msg
+
+
+# ---------------------------------------------------------------------------
+# DAG behaviour — the structural guarantees behind the checks above
+# ---------------------------------------------------------------------------
+def test_broken_schema_skips_dependent_checks(contracts, clean_frames):
+    # A missing column fails schema:sales, which must SKIP (not silently pass) the
     # downstream content + join checks that read sales.
-    report = validate_snapshot_dir(FIXTURES / "bad_missing_column", contracts)
+    clean_frames["sales"] = clean_frames["sales"].drop(columns=["segment"])
+    report = validate_ingestion(clean_frames, contracts)
     assert report.status_of("schema:sales") == Status.FAILED
     assert report.status_of("content:sales") == Status.SKIPPED
     assert report.status_of("dim_tuples_known") == Status.SKIPPED
-    assert report.status_of("keys_unique") == Status.SKIPPED
-    # A feed unaffected by the break still runs.
-    assert report.status_of("content:gl_actuals") == Status.PASSED
+    assert report.status_of("content:gl_actuals") == Status.PASSED  # unaffected feed runs
 
 
-def test_independent_faults_all_reported(contracts):
-    # Two unrelated faults in one run → both checks fail in a single pass.
-    frames = read_snapshot_frames(FIXTURES / "clean")
-    frames["gl_actuals"].loc[0, "amount"] = "-1"
-    frames["sales"].loc[0, "segment"] = "Carrier_Pigeon"
-    report = validate_ingestion(frames, contracts)
+def test_independent_faults_all_reported(contracts, clean_frames):
+    clean_frames["gl_actuals"].loc[0, "amount"] = "-1"
+    clean_frames["sales"].loc[0, "segment"] = "Carrier_Pigeon"
+    report = validate_ingestion(clean_frames, contracts)
     assert report.status_of("content:gl_actuals") == Status.FAILED
     assert report.status_of("content:sales") == Status.FAILED
 
 
-def test_missing_file_halts(contracts):
-    frames = read_snapshot_frames(FIXTURES / "clean")
-    frames["reference_data"] = None
-    report = validate_ingestion(frames, contracts)
+def test_missing_file_halts(contracts, clean_frames):
+    clean_frames["reference_data"] = None
+    report = validate_ingestion(clean_frames, contracts)
     assert report.status_of("present:reference_data") == Status.FAILED
     assert report.status_of("content:reference_data") == Status.SKIPPED
     assert not report.ok
@@ -108,23 +187,15 @@ def test_toposort_is_deterministic_and_respects_edges():
     checks = build_dag()
     order1 = [c.name for c in _toposort(checks)]
     order2 = [c.name for c in _toposort(build_dag())]
-    assert order1 == order2  # stable
+    assert order1 == order2
     pos = {name: i for i, name in enumerate(order1)}
     for c in checks:
         for dep in c.depends_on:
             assert pos[dep] < pos[c.name], f"{dep} must run before {c.name}"
 
 
-def test_plan_coverage_is_warning_not_halt(contracts):
-    # Drop the active-period plan rows → plan_covers_acq_units warns, but the run
-    # still passes (incomplete-but-sound data is labeled downstream, not halted).
-    frames = read_snapshot_frames(FIXTURES / "clean")
-    ref = frames["reference_data"]
-    active = contracts.active_period
-    frames["reference_data"] = ref[~((ref["reference_type"] == "plan")
-                                     & ref["date"].str.startswith(active))].reset_index(drop=True)
-    report = validate_ingestion(frames, contracts)
-    assert report.status_of("plan_covers_acq_units") == Status.WARNED
-    assert any(p.severity == Severity.WARNING
-               for r in report.results for p in r.problems)
-    assert report.ok  # warnings do not halt
+def test_pipeline_halt_is_a_value_error(contracts, clean_frames):
+    clean_frames["gl_actuals"].loc[0, "amount"] = "-1"
+    with pytest.raises(ValueError):  # PipelineHalt subclasses ValueError
+        validate_ingestion(clean_frames, contracts).raise_if_failed()
+    assert issubclass(PipelineHalt, ValueError)

@@ -32,6 +32,7 @@ CLI:
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import sys
 from collections import deque
@@ -52,11 +53,13 @@ DEFAULT_CONFIG_DIR = REPO_ROOT / "config"
 DEFAULT_SYSTEM_CONFIG = DEFAULT_CONFIG_DIR / "system_config.yaml"
 
 
-class PipelineHalt(Exception):
+class PipelineHalt(ValueError):
     """Raised to halt the pipeline loudly with a plain-language reason.
 
-    Mirrors the generator's halt exception by design (same loud-failure contract,
-    §17) — but defined here because ``app/`` must never import from ``scripts/``.
+    Subclasses ``ValueError``: a halt is fundamentally "the incoming values are
+    wrong", so callers (and tests) can catch the standard exception while the name
+    still reads as the loud-failure contract (§17). Mirrors the generator's halt by
+    design — but defined here because ``app/`` must never import from ``scripts/``.
     """
 
 
@@ -212,8 +215,8 @@ Frames = dict[str, Optional[pd.DataFrame]]
 
 @dataclass
 class Contracts:
-    snapshot_date: dt.date
-    active_period: str                       # "YYYY-MM" derived from snapshot_date
+    snapshot_date: dt.date                   # as-of cutoff: no feed row may post-date this
+    active_period: str                       # "YYYY-MM" business period under analysis
     gl_combos: set[tuple[str, str, str]]     # (cost_center, gl_account, vendor)
     acq_units: set[tuple[str, str, str]]     # (entity, region, segment), acquisition
     leaf_tuples: set[tuple[str, ...]]        # the 33 valid 8-field dimension tuples
@@ -274,6 +277,14 @@ def _sample(items, n: int = 5) -> str:
     return head + (f" … (+{len(items) - n} more)" if len(items) > n else "")
 
 
+def _loc(feed: str, *cols: str) -> str:
+    """Locate a problem by file + field — every error message names both the file
+    (``sales.csv``) and the offending column(s), so a halt points straight at the fix."""
+    label = "column" if len(cols) == 1 else "columns"
+    fields = ", ".join(f"'{c}'" for c in cols)
+    return f"{feed}.csv ({label} {fields})"
+
+
 def _nonempty_mask(s: pd.Series) -> pd.Series:
     return s.astype(str).str.len() > 0
 
@@ -283,7 +294,7 @@ def _check_nonnull(df, feed, cols) -> list[Problem]:
     for c in cols:
         empties = (~_nonempty_mask(df[c])).sum()
         if empties:
-            out.append(_err(f"{feed}.{c}: {empties} null/empty value(s) in a non-nullable field"))
+            out.append(_err(f"{_loc(feed, c)}: {empties} null/empty value(s) in a non-nullable field"))
     return out
 
 
@@ -294,12 +305,12 @@ def _check_dates(df, feed, cols, contracts, allow_future) -> list[Problem]:
         parsed = pd.to_datetime(present, format="%Y-%m-%d", errors="coerce")
         bad = present[parsed.isna()]
         if len(bad):
-            out.append(_err(f"{feed}.{c}: {len(bad)} unparseable date(s) "
+            out.append(_err(f"{_loc(feed, c)}: {len(bad)} unparseable date(s) "
                             f"(want YYYY-MM-DD): {_sample(bad.unique())}"))
         if not allow_future:
             future = present[parsed.dt.date > contracts.snapshot_date]
             if len(future):
-                out.append(_err(f"{feed}.{c}: {len(future)} date(s) after the "
+                out.append(_err(f"{_loc(feed, c)}: {len(future)} date(s) after the "
                                 f"snapshot date {contracts.snapshot_date}: "
                                 f"{_sample(future.unique())}"))
     return out
@@ -314,12 +325,12 @@ def _check_numeric(df, feed, col, *, integer=False, nonneg=False, nullable=False
     nums = pd.to_numeric(present, errors="coerce")
     bad = present[nums.isna()]
     if len(bad):
-        out.append(_err(f"{feed}.{col}: {len(bad)} non-numeric value(s): {_sample(bad.unique())}"))
+        out.append(_err(f"{_loc(feed, col)}: {len(bad)} non-numeric value(s): {_sample(bad.unique())}"))
     good = nums.dropna()
     if integer and ((good % 1) != 0).any():
-        out.append(_err(f"{feed}.{col}: {((good % 1) != 0).sum()} non-integer value(s)"))
+        out.append(_err(f"{_loc(feed, col)}: {((good % 1) != 0).sum()} non-integer value(s)"))
     if nonneg and (good < 0).any():
-        out.append(_err(f"{feed}.{col}: {(good < 0).sum()} negative value(s)"))
+        out.append(_err(f"{_loc(feed, col)}: {(good < 0).sum()} negative value(s)"))
     return out
 
 
@@ -328,7 +339,7 @@ def _check_enum(df, feed, col) -> list[Problem]:
     present = df[col][_nonempty_mask(df[col])]
     bad = present[~present.isin(allowed)]
     if len(bad):
-        return [_err(f"{feed}.{col}: {len(bad)} value(s) outside {sorted(allowed)}: "
+        return [_err(f"{_loc(feed, col)}: {len(bad)} value(s) outside {sorted(allowed)}: "
                      f"{_sample(bad.unique())}")]
     return []
 
@@ -342,18 +353,18 @@ def _check_dim_conditionals(df, feed) -> list[Problem]:
     is_term = df["product_type"] == "Term"
     bad_m2m = (is_m2m & _nonempty_mask(ct)).sum()
     if bad_m2m:
-        out.append(_err(f"{feed}.contract_term_months: {bad_m2m} Month_to_Month row(s) "
-                        f"carry a term (must be null)"))
+        out.append(_err(f"{_loc(feed, 'contract_term_months')}: {bad_m2m} Month_to_Month "
+                        f"row(s) carry a term (must be null)"))
     bad_term = (is_term & ~ct.isin(VALID_CONTRACT_TERMS)).sum()
     if bad_term:
-        out.append(_err(f"{feed}.contract_term_months: {bad_term} Term row(s) without a "
-                        f"valid term in {sorted(VALID_CONTRACT_TERMS)}"))
+        out.append(_err(f"{_loc(feed, 'contract_term_months')}: {bad_term} Term row(s) "
+                        f"without a valid term in {sorted(VALID_CONTRACT_TERMS)}"))
     # customer_class is residential-only.
     bad_class = (_nonempty_mask(df["customer_class"])
                  & (df["customer_size_tier"] != "residential")).sum()
     if bad_class:
-        out.append(_err(f"{feed}.customer_class: {bad_class} non-residential row(s) carry a "
-                        f"customer_class (residential-only field)"))
+        out.append(_err(f"{_loc(feed, 'customer_class')}: {bad_class} non-residential row(s) "
+                        f"carry a customer_class (residential-only field)"))
     return out
 
 
@@ -382,9 +393,9 @@ def _schema(feed):
         extra = [c for c in cols if c not in required]
         out = []
         if missing:
-            out.append(_err(f"{feed}: missing required column(s): {missing}"))
+            out.append(_err(f"{feed}.csv: missing required column(s): {missing}"))
         if extra:
-            out.append(_warn(f"{feed}: unexpected column(s) (ignored downstream): {extra}"))
+            out.append(_warn(f"{feed}.csv: unexpected column(s) (ignored downstream): {extra}"))
         return out
     return fn
 
@@ -420,7 +431,8 @@ def _content_conversions(frames, contracts):
     cd = pd.to_datetime(df["conversion_date"][both], format="%Y-%m-%d", errors="coerce")
     backwards = (cd < sd).sum()
     if backwards:
-        out.append(_err(f"conversions: {backwards} row(s) where conversion_date precedes sale_date"))
+        out.append(_err(f"{_loc('conversions', 'conversion_date', 'sale_date')}: {backwards} "
+                        f"row(s) where conversion_date precedes sale_date"))
     return out
 
 
@@ -470,8 +482,9 @@ def _gl_combos_resolve(frames, contracts):
     combos = set(df[["cost_center", "gl_account", "vendor"]].itertuples(index=False, name=None))
     unresolved = combos - contracts.gl_combos
     if unresolved:
-        return [_err(f"gl_actuals: {len(unresolved)} (cost_center, gl_account, vendor) combo(s) "
-                     f"not resolvable via gl_mapping.csv: {_sample(unresolved)}")]
+        return [_err(f"{_loc('gl_actuals', 'cost_center', 'gl_account', 'vendor')}: "
+                     f"{len(unresolved)} combo(s) not resolvable via gl_mapping.csv: "
+                     f"{_sample(unresolved)}")]
     return []
 
 
@@ -480,8 +493,9 @@ def _dim_tuples_known(frames, contracts):
     for feed in ("sales", "conversions", "reference_data"):
         unknown = _dim_tuples(frames[feed]) - contracts.leaf_tuples
         if unknown:
-            out.append(_err(f"{feed}: {len(unknown)} dimension tuple(s) not in the roster "
-                            f"(cogs_config leaves): {_sample(unknown, n=3)}"))
+            out.append(_err(f"{_loc(feed, *DIMENSION_COLUMNS)}: {len(unknown)} dimension "
+                            f"tuple(s) not in the roster (cogs_config.csv leaves): "
+                            f"{_sample(unknown, n=3)}"))
     return out
 
 
@@ -490,16 +504,33 @@ def _keys_unique(frames, _contracts):
     for feed in ("sales", "conversions"):
         dup = frames[feed]["customer_key"].duplicated().sum()
         if dup:
-            out.append(_err(f"{feed}: {dup} duplicate customer_key value(s)"))
+            out.append(_err(f"{_loc(feed, 'customer_key')}: {dup} duplicate value(s)"))
     return out
 
 
 def _conversions_reference_sales(frames, _contracts):
     orphans = set(frames["conversions"]["customer_key"]) - set(frames["sales"]["customer_key"])
     if orphans:
-        return [_err(f"conversions: {len(orphans)} customer_key(s) with no matching submission "
-                     f"in sales: {_sample(orphans)}")]
+        return [_err(f"{_loc('conversions', 'customer_key')}: {len(orphans)} value(s) with no "
+                     f"matching submission in sales.csv: {_sample(orphans)}")]
     return []
+
+
+def _facts_have_reference(frames, _contracts):
+    """Every (entity, segment) appearing in the operational facts must have a
+    reference_data row — otherwise there is no plan/forecast to measure that unit
+    against, and a variance can't be computed. ERROR (this is a hard coverage gap)."""
+    ref_units = set(frames["reference_data"][["entity", "segment"]]
+                    .itertuples(index=False, name=None))
+    out = []
+    for feed in ("sales", "conversions"):
+        df = frames[feed]
+        missing = set(df[["entity", "segment"]].itertuples(index=False, name=None)) - ref_units
+        if missing:
+            out.append(_err(f"{_loc(feed, 'entity', 'segment')}: {len(missing)} entity/segment "
+                            f"combo(s) with no matching row in reference_data.csv: "
+                            f"{_sample(missing)}"))
+    return out
 
 
 def _notes_scope_known(frames, contracts):
@@ -511,8 +542,9 @@ def _notes_scope_known(frames, contracts):
         if (entity, region, segment) not in contracts.valid_note_scopes:
             bad.append((entity, region, segment))
     if bad:
-        return [_err(f"operational_notes: {len(bad)} note(s) scoped to an unknown "
-                     f"(entity, region, segment): {_sample(set(bad))}")]
+        return [_err(f"{_loc('operational_notes', 'entity', 'region', 'segment')}: "
+                     f"{len(bad)} note(s) scoped to an unknown (entity, region, segment): "
+                     f"{_sample(set(bad))}")]
     return []
 
 
@@ -562,6 +594,9 @@ def build_dag() -> list[Check]:
         Check("keys_unique", ("content:sales", "content:conversions"), _keys_unique),
         Check("conversions_reference_sales",
               ("content:sales", "content:conversions"), _conversions_reference_sales),
+        Check("facts_have_reference",
+              ("content:sales", "content:conversions", "content:reference_data"),
+              _facts_have_reference),
         Check("notes_scope_known", ("content:operational_notes",), _notes_scope_known),
         Check("plan_covers_acq_units", ("content:reference_data",), _plan_covers_acq_units),
     ]
@@ -644,12 +679,31 @@ def read_snapshot_frames(snapshot_dir: Path) -> Frames:
     return frames
 
 
+def _infer_as_of(snapshot_dir: Path, default: dt.date) -> dt.date:
+    """A snapshot folder is self-dating: a cumulative cut named ``YYYY-MM-DD`` has that
+    date as its freshness cutoff. Fall back to the config's active snapshot date for a
+    folder that isn't date-named (e.g. a fixture)."""
+    try:
+        return dt.date.fromisoformat(snapshot_dir.name)
+    except ValueError:
+        return default
+
+
 def validate_snapshot_dir(snapshot_dir: Path,
-                          contracts: Optional[Contracts] = None) -> ValidationReport:
-    """Load a snapshot folder + contracts, run the gate, return the report."""
+                          contracts: Optional[Contracts] = None,
+                          as_of: Optional[dt.date] = None) -> ValidationReport:
+    """Load a snapshot folder + contracts, run the gate, return the report.
+
+    The "not in the future" cutoff is the snapshot's own as-of date (inferred from the
+    folder name unless given) — *not* the config's active-snapshot pointer — so each
+    cumulative cut validates against the day it represents. The business
+    ``active_period`` used for plan coverage stays as configured."""
     contracts = contracts or load_contracts()
+    snapshot_dir = Path(snapshot_dir)
+    as_of = as_of or _infer_as_of(snapshot_dir, contracts.snapshot_date)
+    run_contracts = dataclasses.replace(contracts, snapshot_date=as_of)
     frames = read_snapshot_frames(snapshot_dir)
-    return validate_ingestion(frames, contracts, snapshot=str(snapshot_dir))
+    return validate_ingestion(frames, run_contracts, snapshot=str(snapshot_dir))
 
 
 # ===========================================================================
