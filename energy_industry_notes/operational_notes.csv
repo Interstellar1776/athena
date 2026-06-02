@@ -1,0 +1,28 @@
+date,entity,region,segment,note_text,author
+2024-04-15,ALL,ALL,ALL,Annual compliance training scheduled across all channels for Q2. Reps and agents pulled for a half day each; no material operational impact expected.,People Ops
+2024-05-18,ALL,ALL,ALL,CRM maintenance window Saturday night into Sunday morning. Expect a brief reporting lag Sunday; numbers will catch up by Monday.,IT Operations
+2024-05-27,ALL,ALL,ALL,"Memorial Day holiday Monday — field crews and outbound desks dark, inbound on a skeleton shift. Lighter volume across the board for the day.",Operations
+2024-04-22,ERCOT,North,Door_to_Door,Spring hiring done — added two field crews and brought tenure back up after winter attrition. Running ride-alongs this week to get the new reps productive.,Field Ops — ERCOT North
+2024-05-02,ERCOT,North,Door_to_Door,"Opened up a few new ZIPs north of the metro. Crews knocked roughly 3,800 doors last week; contact rates look fine but it's early ground so cost per knock is higher than our core turf.",Door Sales Ops
+2024-05-07,ERCOT,North,Door_to_Door,"Pushed the door-to-door field team hard on May 6 to chase Q2 growth targets — raised commissions, added crews and hours, and stood up a short-term sales-incentive bonus. Expect elevated cost-per-acquisition in the near term, with incentive payouts landing at month-end.","J. Rivera, Channel Marketing"
+2024-05-13,ERCOT,North,Door_to_Door,"Bumped the commission tier again mid-month to keep reps motivated on the Q2 push. Reps are knocking more and writing more, but we're seeing a lot of soft yeses — cost is climbing faster than clean enrollments.",Door Sales Ops
+2024-05-24,ERCOT,North,Door_to_Door,Rain Friday and Saturday cost us two field days — crews are behind on the month's target and leaning on overtime to make it up. Costs keep stacking with not much extra volume to show for it.,Field Ops — ERCOT North
+2024-05-31,ERCOT,North,Door_to_Door,"Month-end incentive spiffs paid out for the Q2 push — about $8.5k across DoorPoint and Summit crews. Planned, but it's another bump on top of an already heavy commission month.",Finance Operations
+2024-05-19,ERCOT,North,Door_to_Door,Finance flagged a late April field-sales commission invoice (~$9.8k overage) from DoorPoint that will post in May. April CPA may be restated once it lands.,Finance Operations
+2024-06-06,ERCOT,North,Door_to_Door,Late commission true-up from DoorPoint (~$4k) for end-of-May knocks posted after the books closed. Bumps closed-May spend up a touch — flagging as a restatement.,Finance Operations
+2024-04-18,ERCOT,South,Door_to_Door,South field channel steady. FieldForce crew tenure is high and close rates are holding where we'd expect — no changes planned this month.,Door Sales Ops
+2024-04-15,ERCOT,North,Web_Direct,Paid search budget holding steady. SearchAds and BidStream both pacing to plan; nothing unusual in CPA.,Digital Acquisition
+2024-05-06,ERCOT,North,Web_Direct,"Refreshed ad creative on BidStream this week. Early click-through is up a little, CPA basically flat — digital spend is capped by budget so no runaway risk here.",Paid Media
+2024-05-12,PJM,East,Web_Direct,MetroSearch added a handful of new keywords in the PECO area. Spend staying within budget; watching that the new terms don't drag efficiency.,Digital Acquisition
+2024-05-10,ERCOT,North,Telemarketing,"DialPro forecast revised up slightly — we're adding a small evening shift to catch more after-work answers, so expect modestly higher cost this month.",Telesales Ops — North
+2024-04-29,ERCOT,South,Telemarketing,"Two senior SouthDial agents gave notice this week. Backfilling now, but we'll be light on experienced closers on the South desk for a bit.",Contact Center Operations
+2024-05-09,ERCOT,South,Telemarketing,High agent turnover in the outbound calling center this week. Lead quality and close rates slipping; more drop-offs than usual until we rehire and retrain.,Contact Center Operations
+2024-05-15,ERCOT,South,Telemarketing,Still short-staffed on the South desk. The lead list we're working is older than usual and we're getting more hang-ups — conversion is running below where it should be.,Telesales Ops — South
+2024-05-16,ERCOT,West,Telemarketing,"ERCOT West territory officially launched. First telemarketing deals expected this week; no historical baseline yet, so early metrics run off plan.",Market Expansion
+2024-05-20,ERCOT,West,Telemarketing,"West desk is ramping. WestCall agents still learning the script and the local offers, so early numbers are off plan as expected — should tighten up over the next couple of weeks.",Telesales Ops — West
+2024-05-03,PJM,East,Direct_Mail,Direct-mail print vendor (MailWorks) renewed annual agreement; commercial terms unchanged from last year.,Partnerships
+2024-04-30,PJM,East,Direct_Mail,"Spring drop went out — roughly 120k pieces in the PECO footprint. Responses trickle in over the next few weeks, so attribution this month will look light until they land.",Lifecycle Marketing
+2024-05-08,ERCOT,West,Direct_Mail,"PrintReach drop slipped a few days on a press issue. West mail responses will lag a bit; nothing wrong with the offer, just timing.",Lifecycle Marketing
+2024-05-11,PJM,East,Online_Partner,"AffiliateHub bills monthly, so there's no in-month spend booked yet against these enrollments — CPA here will read as an estimate until the month-end invoice posts.",Partnerships
+2024-04-25,ERCOT,North,Online_Partner,PartnerStream traffic steady and lead quality fine. No changes to the partner mix this month.,Partnerships
+2024-05-14,PJM,East,Inbound_Call_Center,EastConnect reworked the IVR menu so larger commercial callers route to senior reps faster. Two sizable C&I deals in the pipeline this week off the back of it.,Contact Center Operations
