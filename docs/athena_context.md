@@ -138,11 +138,18 @@ On any given day within a period, Athena:
 1. Takes actuals accumulated to date for the current period
 2. Projects them forward to period end using two methods, shown side by side:
    - **Linear extrapolation:** pace-to-date ÷ days elapsed × days in period
-   - **Weighted recent trend:** weights more recent days more heavily than older ones
+   - **Weighted trend (trailing-21-day linear regression):** fit a least-squares line over the trailing 21 days of daily values, extrapolate the slope to period end. Falls back to all available data when the period is younger than 21 days. **[LOCKED]** *(supersedes the earlier "weighted recent average" / "weights recent days more heavily"; rationale in `decisions_log.md`)*
 3. Compares that projected period-end figure against plan (or forecast) for the full period
 4. Surfaces the variance as a finding if it crosses a configured threshold
 
 The signal Athena always answers: *"If current trends continue, where will we end the period, and how does that compare to plan?"*
+
+### Projection only runs on open periods **[LOCKED]**
+Projection is the proactive question — it is meaningful **only while a period is open** (still
+accumulating). A closed or restated period is settled: it has actuals, not a projection.
+`metrics_calculator` resolves each period's GL-completeness state once and emits a boolean
+`is_projectable` (true **iff** `open`); `projection_engine` reads that flag and never re-derives
+the state. See §10 (period lifecycle) and §14 (`is_projectable`).
 
 ### Confidence indicators
 Every projection shows a confidence indicator reflecting how much of the period has elapsed. Example: *"Projected month-end CPA: $142 (linear) / $138 (weighted) — based on 8 of 30 days. Low confidence."* Early-period findings are **never suppressed**. Low confidence is shown, not hidden; the user decides how to weight it.
@@ -239,14 +246,39 @@ data/snapshots/
 ### CPA — Cost Per Acquisition **[LOCKED]**
 CPA and COGS are **separate metrics**, never conflated. CPA actual derives from GL spend data. The ledger (`gl_actuals`) is **dimension-free**: each entry carries posting date, document date, cost center (the channel), GL account (the expense type), amount, and vendor. The business resolution — gain channel + geography — is reconstructed via `gl_mapping`, keyed on `(cost_center, gl_account, vendor)`; **CPA is computed at the channel × geography (entity/region/segment) grain**, not per customer attribute. The gap between posting and document date enables automatic late-invoice / restatement detection without accrual flags.
 
-**GL completeness states** (Python evaluates in order per entity/segment/period):
+**Period lifecycle — compute forever, label-and-freeze at close** **[LOCKED]** *(rationale: `decisions_log.md`)*
+
+A period **never stops being computable.** Closing is a *label*, not a removal: CPA recomputes
+whenever new spend lands, in any period, at any snapshot. The lifecycle is
+`open → closed → (restated)`; `accrued` is the cross-period-posting marker. Close day =
+`period_close_day` (8); a period is *past close* when `snapshot_date ≥` day 8 of the following
+month. This gives full live-mode realism: a **March snapshot** sees Jan/Feb `closed` and March
+`open`, with no special-casing.
 
 | State | Condition | Treatment |
 |---|---|---|
-| `open` | Current period, before close date | Partial — apply estimation hierarchy, show confidence |
-| `closed` | Past close date, no new entries | Complete — CPA authoritative |
-| `restated` | Past close date, new entries appeared | Flag: "Unexpected spend posted after close" |
-| `accrued` | Document date prior period, posting date current | Prior-period restatement — flag delta vs. original CPA |
+| `open` | Current month, before its close day | The **proactive zone** — partial; apply estimation hierarchy, show confidence, **project** (`is_projectable = true`) |
+| `closed` | Past close, no new spend since close | **Authoritative.** On transition to `closed`, **freeze the settled metrics as the period's reference baseline.** No projection |
+| `restated` | Past close, new spend appeared | **Recompute** and **flag the delta vs. the frozen close reference** (Period Restatement alert). No projection |
+| `accrued` | Document date in a prior period, posting date in the current period | Prior-period cost landing in the open month — flag delta vs. original CPA |
+
+**Frozen close reference [LOCKED]:** when a period transitions to `closed`, Python persists its
+settled metric values as the baseline the Period Restatement alert measures against. A later
+`restated` recompute is compared to *that frozen reference*, not to a re-derived figure.
+
+**Evaluation order — `accrued` is checked before `restated` [LOCKED]:** per `(unit, period)`,
+first match wins: `open` → `accrued` → `restated` → `closed`. Checking `accrued` first is
+deliberate (see the worked case below).
+
+**Worked edge case (the demo):** the **June-8 snapshot settles May**. The May true-up carries a
+**May document date** and **posts June 6** — *before* May's close (June 8). It therefore arrived
+within May's settlement window: a prior-period (May) cost landing in the open current month (June),
+which is an **`accrued`** entry, **not** a `restated` one. `restated` is reserved for spend that
+posts **after** a period's close (a genuinely settled month changing). Because the posting (June 6)
+precedes the close (June 8), evaluating `accrued` first yields the accounting-correct label.
+*(Consistent with the built `gl_processor`, which checks `accrued` before `restated`; see
+`decisions_log.md` for the reasoning and the note that a true `restated` demo would require posting
+the true-up after the close day.)*
 
 **CPA estimation hierarchy** (applied in order when GL spend is incomplete):
 1. Full period GL spend posted → **real CPA** (authoritative, no flag)
@@ -263,11 +295,20 @@ COGS is a **plan input** at entity/segment level, not calculated from transactio
 
 **Fallback:** current input → trailing 3-period average (flagged) → plan COGS (flagged).
 
-### LTV — Lifetime Value **[LOCKED]**
-1. **Calculated** (primary): `LTV = avg_margin_per_period × expected_retention_periods`, where retention is a per-entity/segment config input (door-to-door retains differently than broker-acquired).
-2. **Plan** (fallback, including first run): taken from the plan dataset.
+### LTV — Lifetime Value **[LOCKED]** *(hierarchy detailed — rationale in `decisions_log.md`)*
+**Calculate first, fall back to plan.** Resolved in this order, each output labeled with the method
+that produced it:
 
-Labeled `calculated` or `plan_input`.
+1. **`calculated_retention`** (primary) — `trailing-3-month avg margin per period ×
+   expected_retention_periods` (retention is a per-sub-segment config input; door-to-door retains
+   differently than broker-acquired). Requires ≥3 months of margin history.
+2. **`calculated_term`** — `margin × contract_term_months`, used **only when retention is
+   unconfigured**. Cannot serve `Month_to_Month` (no term), so it is Term-only.
+3. **`plan_input`** (fallback, including first run) — the plan dataset's `ltv_ref`.
+4. **`unresolved`** — deferred fallback when even plan is unavailable (e.g. a brand-new segment with
+   no plan row); the value is labeled `unresolved` rather than blanked (§9 — never silent).
+
+Labeled `calculated_retention` / `calculated_term` / `plan_input` / `unresolved`.
 
 ### Margin **[LOCKED]**
 ```
@@ -289,6 +330,15 @@ If price per unit is unavailable, fall back to plan margin input. Always labeled
 **Cost:** COGS spike (vs baseline by %, HIGH) · COGS trend (rising N periods, MEDIUM) · Late invoice (posting after close, INFO) · Period restatement (prior CPA changed by % from late invoice, MEDIUM)
 
 **Projection:** Period-end miss linear · Period-end miss weighted (both HIGH/MEDIUM by magnitude) · Plan-vs-forecast gap (divergence > %, MEDIUM)
+
+### Severity and the estimated flag are orthogonal **[LOCKED]**
+Risk level (`HIGH`/`MEDIUM`/`LOW`/`INFO`) is **magnitude only** — how far off plan, never adjusted
+for data quality. A separate boolean **`estimated`** carries data confidence: it is `true` for any
+non-`real` metric method (`gl_extrapolated`, `trailing_avg`, `plan_input`, `calculated_*`,
+`unresolved`) **or** any open-period projection. The two are independent: an **estimated HIGH stays
+HIGH.** Low confidence is surfaced via `estimated` + the confidence indicator (§6), **never by
+downgrading severity** — silently demoting an estimated alert would hide a real risk and violate
+the never-blank / never-suppress principle (§9).
 
 ---
 
@@ -341,6 +391,7 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
     "days_elapsed": 8,
     "days_in_period": 31,
     "confidence": "low",                       # based on % of period elapsed
+    "is_projectable": True,                    # true iff gl_completeness_state == "open" (§6); projection_engine reads this, never re-derives
 
     "actual": 142.00,
     "actual_method": "gl_extrapolated",        # real / gl_extrapolated / trailing_avg / plan_input
@@ -350,20 +401,23 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 
     "variance_pct": 20.3,
     "variance_direction": "UNFAVORABLE",
-    "risk_level": "HIGH",
+    "risk_level": "HIGH",                      # magnitude only — never adjusted for data quality (§11)
+    "estimated": True,                         # orthogonal to risk_level: true for any non-real method OR open-period projection (§11)
 
-    "projected_period_end_linear": 148.00,
-    "projected_period_end_weighted": 144.00,
+    "projected_period_end_linear": 148.00,     # populated only when is_projectable
+    "projected_period_end_weighted": 144.00,   # trailing-21-day linear regression, slope to period end (§6)
 
     "cogs_per_unit": 0.048,
     "cogs_method": "plan_input",               # plan_input / trailing_avg / estimated
     "ltv": 620.00,
-    "ltv_method": "calculated",                # calculated / plan_input
+    "ltv_method": "calculated_retention",      # calculated_retention / calculated_term / plan_input / unresolved (§10)
     "margin_per_unit": 18.40,
     "margin_method": "calculated",             # calculated / plan_input
     "unit_economics_flag": False,              # True if CPA + COGS > revenue per unit
 
-    "gl_completeness_state": "open",           # open / closed / restated / accrued
+    "gl_completeness_state": "open",           # open / closed / restated / accrued (§10 lifecycle)
+    "frozen_reference": None,                  # settled metric values persisted at close; the baseline a restatement measures against
+    "restatement_delta": None,                 # populated when restated: recomputed value − frozen_reference
 
     "supporting_metrics": {
         "volume_converted_actual": 310,
@@ -380,6 +434,18 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 }
 ```
 
+### Findings grain is metric-driven **[LOCKED]**
+Each finding carries the **honest grain of its metric** — granularity is never collapsed to a
+single shared level:
+
+- **Unit grain** `(entity, region, segment)`: CPA, CPA-vs-LTV, projection (GL resolves here; the
+  ledger has no product/customer dimensions).
+- **Leaf grain** (full 8-dim hierarchy): margin, fallout.
+
+One finding per flagged condition: a single segment with three distinct issues produces **three
+findings**, not one merged row. The proactive feed **rolls up to the unit for display**, but the
+underlying findings retain their native grain for drill-down and for the LLM's reasoning.
+
 ---
 
 ## 15. System Architecture
@@ -395,10 +461,17 @@ app/analytics/
 ├── data_merger.py         ← joins actuals↔GL↔reference, validates join integrity
 ├── gl_processor.py        ← applies gl_mapping, detects completeness state, flags late invoices
 ├── metrics_calculator.py  ← CPA/COGS/LTV/margin, applies fallback hierarchies, labels every output
-├── projection_engine.py   ← linear + weighted projections, pro-rates plan per config
-├── risk_classifier.py     ← applies thresholds, assigns HIGH/MEDIUM/LOW/INFO
-└── findings_builder.py     ← assembles structured findings, one per flagged condition
+├── projection_engine.py   ← linear + weighted (trailing-21-day regression) projections; reads is_projectable; pro-rates plan per-unit (calendar_days default | business_days)
+├── risk_classifier.py     ← applies thresholds, assigns HIGH/MEDIUM/LOW/INFO (magnitude only); sets the orthogonal estimated flag
+└── findings_builder.py     ← assembles structured findings, one per flagged condition, at each metric's native grain
 ```
+
+**`metrics_calculator` internal order [LOCKED]:** `COGS → margin → LTV → CPA → fallout`. Margin
+depends on COGS; LTV (`calculated_retention`) depends on margin; the chain runs in that order so
+each metric's inputs exist before it computes. Every **trailing-average** path (CPA `trailing_avg`,
+COGS `trailing_avg`, LTV `calculated_retention`) requires **≥3 months of history** or falls back to
+the plan input, labeled accordingly (§9). `metrics_calculator` resolves `gl_completeness_state`
+once and emits `is_projectable` for `projection_engine` to consume (§6, §14).
 
 ### Full module map
 ```

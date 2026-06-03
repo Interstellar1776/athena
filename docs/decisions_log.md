@@ -407,6 +407,131 @@ different grain per metric (§14).
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — planning decisions, pre-implementation)
+
+> These were settled in a planning conversation before writing `metrics_calculator` and the
+> downstream modules. They refine several **[LOCKED]** items in `athena_context.md` (§6 §10 §11
+> §14 §15); each refinement is called out so the change is deliberate, not silent.
+
+### Period lifecycle: compute forever, label-and-freeze at close
+**Chose:** A period is **always computable** — closing is a *label*, not a removal. CPA (and every
+metric) recomputes whenever new spend lands, in any period, at any snapshot. Lifecycle
+`open → closed → (restated)`, with `accrued` as the cross-period-posting marker. `open` = current
+month before close day (the proactive, projected zone); `closed` = past close, no new spend
+(authoritative; freeze a settled reference; no projection); `restated` = past close, new spend
+appeared (recompute, flag delta vs. the frozen reference; no projection); `accrued` = document date
+prior period, posting date current. Close day = `period_close_day` (8).
+**Rejected:** Treating a closed period as frozen/uncomputable (the implicit prior model, where
+"past close" meant the metric stopped moving); deriving completeness only from posting dates.
+**Why:** Live mode is the real test — a **March snapshot** must naturally show Jan/Feb `closed` and
+March `open` with no special-casing, and a restatement must be a *recompute against a baseline*,
+not a frozen blank. "Compute forever, label the trust level" gives that for free and keeps the
+never-blank principle (§9) intact: a settled period still has live numbers, just authoritative ones.
+
+### Accrued vs. restated: keep `accrued`-before-`restated`; the June-8 May true-up is `accrued`
+**Chose:** Keep the built `gl_processor` behavior — evaluate `open → accrued → restated → closed`,
+`accrued` **before** `restated`. The May true-up (May document date, **posts June 6**), seen at the
+**June-8 snapshot**, reads **`accrued`**.
+**Rejected:** A `restated`-first ordering / labeling the true-up `restated` (briefly drafted on the
+strength of "June-8 settles May," then reversed by the owner).
+**Why (owner's decision + the engineering case for it):** The true-up **posts June 6, which is
+before May's close (June 8 = `period_close_day` of the following month).** It therefore arrived
+*within* May's settlement window — a prior-period (May) cost landing in the open current month
+(June), which is the textbook definition of an **accrual**, not a restatement. A `restated` entry is
+one that posts **after** a period's close (a genuinely settled month changing). Checking `accrued`
+first yields the accounting-correct label here without special-casing. This resolves the earlier
+deferred *Status (open)* note on the BS3 `gl_processor` entry above in favor of the existing code —
+**no `gl_processor` change is required.**
+**My recommendation (noted for later, not blocking):** two refinements worth considering when
+`gl_processor` is next touched — (a) make the `restated` test "posting_date **after** `close(P)`"
+rather than "posting *month* > document *month*", so the discriminator is the close boundary itself,
+not a calendar-month proxy; and (b) if the demo specifically wants to *exercise* a `restated` state,
+move the generated true-up's posting date to **after June 8** (it currently posts June 6) — that's a
+one-line `generate_snapshots.py` change, separate from processor logic. Both are deferred; today's
+decision keeps the current code and data as-is.
+
+### Frozen close reference
+**Chose:** On the transition to `closed`, persist the period's settled metric values as the
+baseline the **Period Restatement** alert measures against; a later `restated` recompute compares to
+*that frozen reference*, not to a re-derived figure.
+**Why:** "Spend changed after close by X%" is only meaningful against the number that was
+authoritative *at* close. Re-deriving the baseline each run would let the reference drift and make a
+restatement undetectable. A persisted baseline is the honest anchor.
+
+### Projectability contract: resolved once, consumed downstream
+**Chose:** `metrics_calculator` resolves `gl_completeness_state` once and emits a boolean
+`is_projectable` (true **iff** `open`). `projection_engine` reads it and **never re-derives** the
+state.
+**Rejected:** Letting `projection_engine` independently re-evaluate completeness/close logic.
+**Why:** One owner of the state means the projection layer can't disagree with the metric layer
+about whether a period is open — a single source of truth for "is this still in the proactive zone."
+Projection on a closed/restated period is meaningless (it's settled), so the flag also enforces §6.
+
+### Weighted projection = trailing-21-day linear regression
+**Chose:** The weighted projection is a **least-squares line fit over the trailing 21 days** of
+daily values, slope extrapolated to period end; falls back to **all available data** when the
+period is younger than 21 days.
+**Rejected:** The earlier "weighted recent average" / "weight recent days more heavily than older."
+**Why:** A weighted average still answers "what's the level lately," not "where is the trend
+heading" — and the proactive signal is fundamentally about **trajectory**. A regression slope
+captures direction directly and degrades gracefully on short windows. Supersedes §6's prior wording
+(a [LOCKED] item, revised deliberately).
+
+### LTV hierarchy: calculated first, plan as fallback
+**Chose:** Resolve LTV in this order — **calculate first, fall back to plan**: (1)
+`calculated_retention` (primary) = trailing-3-month avg margin × `expected_retention_periods` (needs
+≥3 months history); (2) `calculated_term` = margin × `contract_term_months`, **only when retention
+is unconfigured** and therefore **Term-only** (no term for Month_to_Month); (3) `plan_input`
+(`ltv_ref`) fallback, including first run; (4) `unresolved` — deferred, labeled rather than blanked,
+when even plan is unavailable (a brand-new segment with no plan row).
+**Rejected:** A plan-first chain (briefly drafted, then reversed by the owner); dropping a value
+entirely when no method applies.
+**Why:** LTV is a *calculated* metric by design (§10 — `avg_margin_per_period ×
+expected_retention_periods`); the plan figure is the safety net, not the headline. When the inputs
+exist, the computed value is the more truthful one and should lead; plan only stands in when history
+or config is missing. `calculated_term` is a deliberate stopgap for Term segments lacking retention
+config; it cannot serve Month_to_Month, so the chain falls to `plan_input` and finally an explicit
+`unresolved` label (§9). This **preserves** the original §10 "Calculated (primary)" direction
+(detailing its method tiers), rather than reversing it.
+
+### Pro-rating: per-unit calendar_days (default) vs business_days
+**Chose:** Plan pro-rating for partial periods is a **per-unit switch** — `calendar_days` (default)
+or `business_days` — owned by `projection_engine`.
+**Why:** Reaffirms §6; recorded here as a BS3 planning decision so the per-unit (not global) grain
+is unambiguous when `projection_engine` is built. Weekday-only channels (the generator already
+zeroes weekend activity) pro-rate on business days; everyday operations on calendar days.
+
+### Severity and the estimated flag are orthogonal
+**Chose:** `risk_level` (HIGH/MEDIUM/LOW/INFO) reflects **magnitude only**. A separate boolean
+`estimated` carries data confidence — true for any non-`real` metric method or any open-period
+projection. The two never interact: an **estimated HIGH stays HIGH**; low confidence is shown via
+`estimated` + the confidence indicator, never by downgrading severity.
+**Rejected:** Folding confidence into severity (e.g. demoting an estimated HIGH to MEDIUM).
+**Why:** Conflating "how bad" with "how sure" hides real risk — a HIGH variance built on an
+extrapolated CPA is still a HIGH variance worth surfacing. Keeping the axes separate lets the
+narrative say "serious, and here's how confident we are" instead of silently muting the alarm,
+which is exactly the never-cry-wolf-but-never-go-quiet balance (§4, §9).
+
+### Findings grain is metric-driven; never collapsed
+**Chose:** Each finding keeps the honest grain of its metric — CPA / CPA-vs-LTV / projection at
+**unit** `(entity, region, segment)`; margin / fallout at **leaf** (full hierarchy). One finding
+per flagged condition (a segment with three issues → three findings). The feed rolls up to the unit
+for *display* only; the stored findings retain native grain.
+**Rejected:** Coercing all findings to one shared grain; merging a segment's issues into one row.
+**Why:** GL carries no product/customer dimensions, so a leaf-grain CPA would fabricate precision
+the ledger doesn't have (consistent with the BS3 merger decision); conversely margin/fallout *are*
+leaf-real and shouldn't be blurred up. Per-condition findings keep each issue independently
+explainable and rankable by the LLM.
+
+### metrics_calculator internal order: COGS → margin → LTV → CPA → fallout
+**Chose:** Compute in dependency order — COGS first, then margin (needs COGS), then LTV
+(`calculated_retention` needs margin), then CPA, then fallout. Every trailing-average path needs
+≥3 months of history or falls back to plan, labeled.
+**Why:** A fixed order means each metric's inputs already exist when it runs — no forward
+references, no recomputation. Documented now so module 1's structure is settled before code.
+
+---
+
 ## Template for new entries
 
 ```
