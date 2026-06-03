@@ -223,19 +223,15 @@ class Contracts:
     valid_note_scopes: set[tuple[str, str, str]]  # (entity, region, segment)
 
 
-def load_contracts(config_dir: Path = DEFAULT_CONFIG_DIR,
-                   system_config_path: Path = DEFAULT_SYSTEM_CONFIG) -> Contracts:
-    """Build the runtime contract from the shipped config tables.
+def build_contracts(gl_map: pd.DataFrame, cogs: pd.DataFrame,
+                    snapshot_date: dt.date) -> Contracts:
+    """Assemble the runtime contract from already-loaded config frames.
 
-    Everything is read as string with blanks preserved as ``""`` so the contract
-    keys line up byte-for-byte with how the feeds are loaded (no float reformatting,
-    no NaN/empty ambiguity)."""
-    sys_cfg = yaml.safe_load(system_config_path.read_text())
-    snapshot_date = _as_date(sys_cfg["snapshot_date"])
-
-    gl_map = _read_csv(config_dir / "gl_mapping.csv")
-    cogs = _read_csv(config_dir / "cogs_config.csv")
-
+    Split out from ``load_contracts`` so a caller that has *already* read the config
+    tables (e.g. ``data_loader``, the single I/O owner) can build the contract without
+    a second disk read. The frames must be string-typed with blanks kept as ``""`` (the
+    ``_read_csv`` policy) so the contract keys line up byte-for-byte with how the feeds
+    are validated — no float reformatting, no NaN/empty ambiguity."""
     gl_combos = set(gl_map[["cost_center", "gl_account", "vendor"]]
                     .itertuples(index=False, name=None))
     acq = gl_map[gl_map["spend_category"] == "acquisition_marketing"]
@@ -251,6 +247,19 @@ def load_contracts(config_dir: Path = DEFAULT_CONFIG_DIR,
         leaf_tuples=leaf_tuples,
         valid_note_scopes=valid_scopes,
     )
+
+
+def load_contracts(config_dir: Path = DEFAULT_CONFIG_DIR,
+                   system_config_path: Path = DEFAULT_SYSTEM_CONFIG) -> Contracts:
+    """Read the shipped config tables from disk and build the runtime contract.
+
+    Convenience wrapper over ``build_contracts`` for callers that don't already hold
+    the config frames. Everything is read as string with blanks preserved as ``""``."""
+    sys_cfg = yaml.safe_load(system_config_path.read_text())
+    snapshot_date = _as_date(sys_cfg["snapshot_date"])
+    gl_map = _read_csv(config_dir / "gl_mapping.csv")
+    cogs = _read_csv(config_dir / "cogs_config.csv")
+    return build_contracts(gl_map, cogs, snapshot_date)
 
 
 # ===========================================================================
