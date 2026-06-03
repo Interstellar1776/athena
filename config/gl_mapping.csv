@@ -1,17 +1,21 @@
-cost_center,gl_account,entity,segment,spend_category
-CC-NORTH-PS,6010,ERCOT North,Paid Search,acquisition_marketing
-CC-NORTH-PS,6900,ERCOT North,Paid Search,overhead
-CC-NORTH-DD,6010,ERCOT North,Door_to_Door,acquisition_marketing
-CC-NORTH-DD,6900,ERCOT North,Door_to_Door,overhead
-CC-COAST-PS,6010,ERCOT Coast,Paid Search,acquisition_marketing
-CC-COAST-PS,6900,ERCOT Coast,Paid Search,overhead
-CC-COAST-DD,6010,ERCOT Coast,Door_to_Door,acquisition_marketing
-CC-COAST-DD,6900,ERCOT Coast,Door_to_Door,overhead
-CC-PJM-BR,6010,PJM East,Broker,acquisition_marketing
-CC-PJM-BR,6900,PJM East,Broker,overhead
-CC-PJM-AF,6010,PJM East,Affiliate,acquisition_marketing
-CC-PJM-AF,6900,PJM East,Affiliate,overhead
-CC-COAST-AF,6010,ERCOT Coast,Affiliate,acquisition_marketing
-CC-COAST-AF,6900,ERCOT Coast,Affiliate,overhead
-CC-WEST-BR,6010,ERCOT West,Broker,acquisition_marketing
-CC-WEST-BR,6900,ERCOT West,Broker,overhead
+cost_center,gl_account,entity,region,segment,spend_category
+CC-ONCOR-PS,6010,ERCOT,North,Paid Search,acquisition_marketing
+CC-ONCOR-PS,6900,ERCOT,North,Paid Search,overhead
+CC-ONCOR-DD,6010,ERCOT,North,Door_to_Door,acquisition_marketing
+CC-ONCOR-DD,6900,ERCOT,North,Door_to_Door,overhead
+CC-CENTERPOINT-PS,6010,ERCOT,South,Paid Search,acquisition_marketing
+CC-CENTERPOINT-PS,6900,ERCOT,South,Paid Search,overhead
+CC-CENTERPOINT-DD,6010,ERCOT,South,Door_to_Door,acquisition_marketing
+CC-CENTERPOINT-DD,6900,ERCOT,South,Door_to_Door,overhead
+CC-PECO-BR,6010,PJM,East,Broker,acquisition_marketing
+CC-PECO-BR,6900,PJM,East,Broker,overhead
+CC-PECO-AF,6010,PJM,East,Affiliate,acquisition_marketing
+CC-PECO-AF,6900,PJM,East,Affiliate,overhead
+CC-AEPTX-AF,6010,ERCOT,West,Affiliate,acquisition_marketing
+CC-AEPTX-AF,6900,ERCOT,West,Affiliate,overhead
+CC-AEPTX-BR,6010,ERCOT,West,Broker,acquisition_marketing
+CC-AEPTX-BR,6900,ERCOT,West,Broker,overhead
+CC-BGE-BR,6010,PJM,East,Broker,acquisition_marketing
+CC-BGE-BR,6900,PJM,East,Broker,overhead
+CC-ONCOR-AF,6010,ERCOT,North,Affiliate,acquisition_marketing
+CC-ONCOR-AF,6900,ERCOT,North,Affiliate,overhead

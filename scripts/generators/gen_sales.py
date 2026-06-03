@@ -1,10 +1,16 @@
-"""gen_sales.py — produces actuals.csv (operational volume & revenue).
+"""gen_sales.py — produces sales.csv (record-level submissions / enrollments).
 
-The spine of the system: daily units in / converted / lost, plus revenue per
-unit. Iterates shared.SERIES only, so every (entity, segment, product_type) it
-emits is a valid join key. The CPA spike is NOT created here — it lives in GL
-spend (gen_gl). Here the hero's conversions stay on their baseline; the fallout
-series is the only one whose conversion rate is deliberately degraded.
+The submissions feed: one row per sale (enrollment), the day it was sold. It is
+deliberately "dumb" — a submission does NOT know its own fate. Whether a sale
+becomes a gain is decided downstream by gen_conversions; fallout is then derived
+by anti-join (a sale with no matching conversion on `customer_key` fell out).
+Keeping outcome off this feed is what prevents a snapshot from revealing the
+result of an enrollment that, at that point in time, is still pending.
+
+It iterates shared.SERIES only, so every dimension tuple it emits is a valid
+join key. `customer_key` is the surrogate key that links a submission to its
+conversion; each series numbers within its own block (see shared) so keys stay
+plain integers yet stable when one series' volume is retuned.
 """
 
 from __future__ import annotations
@@ -14,67 +20,46 @@ import pandas as pd
 
 from . import shared
 
-
-def _conv_rate_for(series, d, config) -> float:
-    """Per-day conversion rate. Only the fallout series degrades, and only
-    inside the active period after the configured start day — ramping the
-    fallout rate (1 - conv_rate) up toward the target."""
-    base = series.base_conv_rate
-    if series.role != "fallout" or d < shared.ACTIVE_PERIOD_START:
-        return base
-    if d.day < config.fallout_start_day:
-        return base
-    # Ramp the daily conversion rate down so the fallout rate reaches its target
-    # by the final (confirmed) snapshot day, then holds — so the month-to-date
-    # fallout rate is fully developed at the snapshot that matters.
-    full_day = shared.SNAPSHOT_DATES[-1].day
-    span = max(1, full_day - config.fallout_start_day)
-    frac = min(1.0, (d.day - config.fallout_start_day) / span)
-    target_conv = 1.0 - config.fallout_target_rate
-    return base - frac * (base - target_conv)
+_LEAD = ["customer_key", "sale_date"]
 
 
 def generate(config) -> pd.DataFrame:
-    """Return the full-timeline actuals dataframe for every series."""
-    rows = []
-    for s in shared.SERIES:
+    """Return the full-timeline submissions dataframe for every series.
+
+    One row per submission: customer_key, sale_date, the full dimension tuple."""
+    frames = []
+    for idx, s in enumerate(shared.SERIES):
         # One RNG stream per series keeps draws isolated and reproducible.
         rng = shared.make_rng(f"sales:{s.cost_center}")
         dates = list(shared.daterange(s.effective_history_start, shared.ACTIVE_PERIOD_END))
-        n = len(dates)
 
-        # Baseline daily inbound volume, shaped by seasonality + day-of-week,
-        # then perturbed by small multiplicative noise.
+        # Daily submission count = baseline volume shaped by seasonality +
+        # day-of-week, perturbed by small multiplicative noise.
         base_volume = np.array([
             s.base_volume_in * shared.seasonal_factor(d) * shared.weekday_factor(d, s.segment)
             for d in dates
         ])
-        volume_in = shared.clamp_nonneg(np.round(shared.apply_noise(base_volume, rng, config.noise_sd)))
+        daily_count = shared.clamp_nonneg(
+            np.round(shared.apply_noise(base_volume, rng, config.noise_sd))
+        ).astype(int)
 
-        # Conversions = volume_in x conversion-rate (gently noised), clamped so
-        # the data-dictionary invariant volume_converted <= volume_in always holds.
-        conv_rate = np.array([_conv_rate_for(s, d, config) for d in dates])
-        conv_noise = 1.0 + rng.normal(0.0, config.noise_sd * 0.5, size=n)
-        volume_converted = shared.clamp_nonneg(np.minimum(np.round(volume_in * conv_rate * conv_noise), volume_in))
-        volume_lost = volume_in - volume_converted
+        n = int(daily_count.sum())
+        if n == 0:
+            continue
 
-        # Revenue per unit — null for the missing-revenue series (margin fallback).
-        if s.base_revenue_per_unit is None:
-            revenue = [None] * n
-        else:
-            rev_arr = shared.apply_noise(np.full(n, s.base_revenue_per_unit), rng, config.noise_sd * 0.5)
-            revenue = np.round(rev_arr, 2)
+        # customer_key: this series' block base + a 1-based local index.
+        base_key = (idx + 1) * shared.CUSTOMER_KEY_BLOCK_SIZE
+        customer_key = base_key + np.arange(1, n + 1)
+        # Expand each date by its submission count (ascending sale_date order).
+        sale_date = np.repeat([d.isoformat() for d in dates], daily_count)
 
-        for i, d in enumerate(dates):
-            rows.append({
-                "date": d.isoformat(),
-                "entity": s.entity,
-                "segment": s.segment,
-                "product_type": s.product_type,
-                "volume_in": int(volume_in[i]),
-                "volume_converted": int(volume_converted[i]),
-                "volume_lost": int(volume_lost[i]),
-                "revenue_per_unit": (None if s.base_revenue_per_unit is None else float(revenue[i])),
-            })
+        frames.append(pd.DataFrame({
+            "customer_key": customer_key,
+            "sale_date": sale_date,
+            **{col: val for col, val in s.dims().items()},
+        }))
 
-    return pd.DataFrame(rows)
+    cols = _LEAD + shared.DIMENSION_COLUMNS
+    if not frames:
+        return pd.DataFrame(columns=cols)
+    return pd.concat(frames, ignore_index=True)[cols]

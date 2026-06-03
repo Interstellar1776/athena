@@ -198,10 +198,11 @@ Each folder holds a **cumulative** view of all actuals for the period up to that
 
 ```
 data/snapshots/
-├── 2024-05-01/   actuals.csv (1 day — period just opened) + gl_actuals.csv + reference_data.csv
-├── 2024-05-08/   actuals.csv (8 days cumulative — early trend)
-├── 2024-05-15/   actuals.csv (15 days — MEDIUM alerts begin)
-└── 2024-05-22/   actuals.csv (22 days — HIGH alerts confirmed)
+├── 2024-05-01/   sales.csv + conversions.csv (1 day — period just opened) + gl_actuals.csv + reference_data.csv
+├── 2024-05-08/   sales.csv + conversions.csv (8 days cumulative — early trend)
+├── 2024-05-15/   sales.csv + conversions.csv (15 days — MEDIUM alerts begin)
+├── 2024-05-22/   sales.csv + conversions.csv (22 days — HIGH alerts confirmed, pre-close)
+└── 2024-06-08/   sales.csv + conversions.csv (post-close — May fully settled, every gain landed)
 ```
 
 ### Snapshots are generated, not hand-built
@@ -212,6 +213,7 @@ data/snapshots/
 - **May 8** — Paid Search CPA drifting up. MEDIUM projection alert, low confidence. Weighted trend shows it emerging.
 - **May 15** — drift continues, a second channel shows volume fallout. Two MEDIUM, one approaching HIGH.
 - **May 22** — CPA spike confirmed, fallout above threshold, CPA-vs-LTV compression fires. Multiple HIGH alerts. The narrative explains the likely cause, references the relevant operational note, recommends action. This is what Athena caught three weeks before close.
+- **June 8 (post-close)** — the settled month. Books are closed (`period_close_day`) and every in-period gain has landed, so this is May's final actuals: the CPA and fallout that the May-22 projection warned about, now confirmed. Lets the demo contrast pre-close *projection* against final *actuals*. (Fallout, a lagging signal, only fully resolves here — by design, you can't confirm an outcome that hasn't landed.)
 
 ---
 
@@ -269,10 +271,10 @@ Labeled `calculated` or `plan_input`.
 
 ### Margin **[LOCKED]**
 ```
-Margin per unit   = revenue_per_unit (from sales data) − COGS per unit (plan input)
-Margin per period = margin per unit × volume_converted
+Margin per unit   = price_per_unit (from conversions data) − COGS per unit (plan input)
+Margin per period = margin per unit × conversions in period
 ```
-If revenue per unit is unavailable, fall back to plan margin input. Always labeled.
+If price per unit is unavailable, fall back to plan margin input. Always labeled.
 
 ---
 
@@ -309,10 +311,13 @@ Athena can compare actuals vs. plan, actuals vs. forecast, or surface the plan-v
 
 **Intent:** The tables the pipeline ingests. Full field definitions live in `data_dictionary.md`; this is the shape.
 
-- **`actuals.csv`** — date, entity, segment, product_type (nullable), volume_in, volume_converted, volume_lost, revenue_per_unit (nullable)
+All facts/reference carry the same denormalized **dimension hierarchy**: entity (market) → region → service_territory · segment · product_type + contract_term_months (Term only) · customer_size_tier → customer_class (residential only). Full field definitions in `data_dictionary.md`.
+
+- **`sales.csv`** — customer_key, sale_date, *(dimensions)* — record-level submissions (no outcome; a sale doesn't know its fate). The fallout denominator
+- **`conversions.csv`** — customer_key, sale_date, conversion_date, *(dimensions)*, price_per_unit (nullable) — record-level gains; joins to `sales` on customer_key. **Fallout = submissions with no matching conversion** (anti-join), so it's only resolved once gains have landed
 - **`gl_actuals.csv`** — posting_date, document_date, cost_center, gl_account, amount, vendor, description (nullable, feeds RAG)
-- **`reference_data.csv`** — date, entity, segment, product_type, reference_type (plan/forecast), volume_in_ref, volume_converted_ref, cost_ref, cpa_ref, cogs_ref, ltv_ref, margin_ref
-- **`operational_notes.csv`** — date, entity, segment, note_text, author (qualitative context, feeds RAG)
+- **`reference_data.csv`** — date, *(dimensions)*, reference_type (plan/forecast), volume_in_ref, volume_converted_ref, cost_ref, cpa_ref, cogs_ref, ltv_ref, margin_ref
+- **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds RAG)
 
 **Reference/config tables** (`/config`): `gl_mapping`, `retention_config`, `cogs_config`, `system_config.yaml`.
 
@@ -487,7 +492,7 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 3. **Analytics core** — sub-modules in order (loader → cleaner → merger → gl_processor → metrics_calculator → projection_engine → risk_classifier → findings_builder), then `variance_engine.py`; manually verify every field and method label.
 4. **Narrative generation** — `narrative_generator.py` with placeholder pattern; test local Ollama then API; check grounding and estimate-acknowledgement.
 5. **Narrative validation** — `narrative_validator.py`; test orphan-token detection and stray-numeral detection; confirm clean output passes without false positives.
-6. **Batch pipeline + reporting** — `report_generator.py`, `batch_pipeline.py`; run end-to-end across all four snapshots; walk the demo arc manually.
+6. **Batch pipeline + reporting** — `report_generator.py`, `batch_pipeline.py`; run end-to-end across all snapshots; walk the demo arc manually.
 7. **Retrieval** — `context_retriever.py`; embed operational notes + GL descriptions; confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`).
 8. **Conversational query** — `query_router.py`, `query_pipeline.py`; test NL question → correct module → grounded answer; test partial-failure plain-language handling.
 9. **Web interface** — FastAPI backend exposing pipeline outputs; intelligence-feed UI; snapshot-date selector for demo mode.

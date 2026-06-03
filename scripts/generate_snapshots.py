@@ -31,12 +31,14 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from generators import shared, gen_sales, gen_gl, gen_reference, gen_notes  # noqa: E402
+from generators import (  # noqa: E402
+    shared, gen_sales, gen_conversions, gen_gl, gen_reference, gen_notes,
+)
 
 CONFIG_DIR = REPO_ROOT / "config"
 SNAPSHOTS_DIR = REPO_ROOT / "data" / "snapshots"
 
-TABLES = ("actuals", "gl_actuals", "reference_data", "operational_notes")
+TABLES = ("sales", "conversions", "gl_actuals", "reference_data", "operational_notes")
 
 
 class PipelineHalt(Exception):
@@ -46,32 +48,37 @@ class PipelineHalt(Exception):
 # ---------------------------------------------------------------------------
 # Validation — runs BEFORE any write. Any failure halts the pipeline loudly.
 # ---------------------------------------------------------------------------
-def validate(actuals, gl, reference, notes, gl_mapping) -> None:
+def _dim_keys(df) -> list:
+    """Normalize each row's dimension columns to the canonical key tuple."""
+    return [shared.normalize_dim_tuple(t)
+            for t in df[shared.DIMENSION_COLUMNS].itertuples(index=False, name=None)]
+
+
+def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
     problems: list[str] = []
 
     valid_keys = {s.key for s in shared.SERIES}
-    valid_dims = {(s.entity, s.segment) for s in shared.SERIES}
+    valid_note_scopes = {(s.entity, s.region, s.segment) for s in shared.SERIES}
 
-    # 1) No invented dimensions in actuals / reference (full key incl product_type).
-    for name, df in (("actuals", actuals), ("reference_data", reference)):
-        keys = set(map(tuple, df[["entity", "segment", "product_type"]].fillna("").itertuples(index=False, name=None)))
-        # product_type may legitimately be present; compare on (entity, segment, product_type)
-        bad = {k for k in keys if (k[0], k[1], k[2]) not in valid_keys}
+    # 1) No invented dimension tuples in sales / conversions / reference.
+    for name, df in (("sales", sales), ("conversions", conversions), ("reference_data", reference)):
+        bad = set(_dim_keys(df)) - valid_keys
         if bad:
-            problems.append(f"{name}: {len(bad)} row-group(s) reference unknown (entity,segment,product_type): {sorted(bad)[:5]}")
+            problems.append(f"{name}: {len(bad)} unknown dimension tuple(s): {sorted(map(str, bad))[:3]}")
 
-    # 2) Notes reference a real (entity, segment) or the literal 'ALL'.
-    for entity, segment in notes[["entity", "segment"]].itertuples(index=False, name=None):
-        if entity == "ALL" or segment == "ALL":
+    # 2) Notes reference a real (entity, region, segment) scope, or use 'ALL' as a
+    #    wildcard on any level.
+    for entity, region, segment in notes[["entity", "region", "segment"]].itertuples(index=False, name=None):
+        if "ALL" in (entity, region, segment):
             continue
-        if (entity, segment) not in valid_dims:
-            problems.append(f"operational_notes: unknown (entity,segment) ({entity}, {segment})")
+        if (entity, region, segment) not in valid_note_scopes:
+            problems.append(f"operational_notes: unknown scope ({entity}, {region}, {segment})")
 
-    # 3) gl_mapping.csv must equal the canonical mapping derived from shared.SERIES.
-    canon = {(r["cost_center"], r["gl_account"], r["entity"], r["segment"], r["spend_category"])
-             for r in shared.canonical_gl_mapping_rows()}
-    authored = {tuple(r) for r in gl_mapping[["cost_center", "gl_account", "entity", "segment", "spend_category"]]
-                .itertuples(index=False, name=None)}
+    # 3) gl_mapping.csv must equal the canonical mapping derived from shared.SERIES
+    #    (now keyed by cost_center, gl_account, entity, region, segment, spend_category).
+    cols = ["cost_center", "gl_account", "entity", "region", "segment", "spend_category"]
+    canon = {tuple(r[c] for c in cols) for r in shared.canonical_gl_mapping_rows()}
+    authored = {tuple(r) for r in gl_mapping[cols].itertuples(index=False, name=None)}
     if canon != authored:
         missing, extra = canon - authored, authored - canon
         if missing:
@@ -89,25 +96,31 @@ def validate(actuals, gl, reference, notes, gl_mapping) -> None:
 
     # 5) Every series has a plan row covering the active period (fallback target).
     plan = reference[reference["reference_type"] == "plan"]
-    plan_keys_active = set(
-        map(tuple, plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)][["entity", "segment", "product_type"]]
-            .itertuples(index=False, name=None))
-    )
+    plan_keys_active = set(_dim_keys(plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)]))
     for s in shared.SERIES:
         if s.key not in plan_keys_active:
             problems.append(f"reference_data: no active-period plan row for series {s.key}")
 
-    # 6) Table-wide invariants.
-    bad_conv = actuals[actuals["volume_converted"] > actuals["volume_in"]]
-    if len(bad_conv):
-        problems.append(f"actuals: {len(bad_conv)} row(s) violate volume_converted <= volume_in")
-    for name, df, cols in (
-        ("actuals", actuals, ["volume_in", "volume_converted", "volume_lost"]),
-        ("gl_actuals", gl, ["amount"]),
-    ):
-        for col in cols:
-            if (df[col] < 0).any():
-                problems.append(f"{name}: negative values in '{col}'")
+    # 6) Sales/conversions integrity — gains reconcile back to submissions on
+    #    customer_key. Fallout is the unmatched complement (not stored), so the
+    #    only contract here is referential: every conversion has a submission.
+    if sales["customer_key"].duplicated().any():
+        problems.append("sales: duplicate customer_key")
+    if conversions["customer_key"].duplicated().any():
+        problems.append("conversions: duplicate customer_key")
+
+    orphans = set(conversions["customer_key"]) - set(sales["customer_key"])
+    if orphans:
+        problems.append(f"conversions: {len(orphans)} customer_key(s) with no matching submission in sales")
+    if (conversions["conversion_date"] < conversions["sale_date"]).any():
+        problems.append("conversions: conversion_date precedes sale_date")
+
+    # 7) Numeric sanity.
+    if (gl["amount"] < 0).any():
+        problems.append("gl_actuals: negative amount")
+    price = conversions["price_per_unit"].dropna()
+    if len(price) and (price < 0).any():
+        problems.append("conversions: negative price_per_unit")
 
     if problems:
         raise PipelineHalt(
@@ -119,11 +132,15 @@ def validate(actuals, gl, reference, notes, gl_mapping) -> None:
 # ---------------------------------------------------------------------------
 # Snapshot assembly
 # ---------------------------------------------------------------------------
-def cut_snapshot(actuals, gl, reference, notes, snap_date: dt.date) -> dict:
-    """Cumulative cut: all rows dated on/before snap_date (GL by posting_date)."""
+def cut_snapshot(sales, conversions, gl, reference, notes, snap_date: dt.date) -> dict:
+    """Cumulative cut: all rows dated on/before snap_date. Each feed is cut on the
+    date the data lands — sales by sale_date, conversions by conversion_date (so a
+    late-landing gain appears only from its conversion date), GL by posting_date,
+    reference/notes by date."""
     iso = snap_date.isoformat()
     return {
-        "actuals": actuals[actuals["date"] <= iso].reset_index(drop=True),
+        "sales": sales[sales["sale_date"] <= iso].reset_index(drop=True),
+        "conversions": conversions[conversions["conversion_date"] <= iso].reset_index(drop=True),
         "gl_actuals": gl[gl["posting_date"] <= iso].reset_index(drop=True),
         "reference_data": reference[reference["date"] <= iso].reset_index(drop=True),
         "operational_notes": notes[notes["date"] <= iso].reset_index(drop=True),
@@ -141,50 +158,61 @@ def write_table(df: pd.DataFrame, folder: Path, name: str, fmt: str) -> None:
 # ---------------------------------------------------------------------------
 # Inspection summary — the realism gate (Build Sequence step 1).
 # ---------------------------------------------------------------------------
-def _hero_series():
-    return next(s for s in shared.SERIES if s.role == "hero")
+def _series_rows(df, s):
+    """Rows of df whose dimension tuple equals series s's key."""
+    return df[[k == s.key for k in _dim_keys(df)]]
 
 
 def print_summary(snapshots: dict, config) -> None:
-    hero = _hero_series()
+    hero = next(s for s in shared.SERIES if s.role == "hero")
     fallout = next(s for s in shared.SERIES if s.role == "fallout")
+    new = next(s for s in shared.SERIES if s.role == "new")
 
     print("\n" + "=" * 78)
-    print("SNAPSHOT SUMMARY — walk the arc (calm -> drift -> building -> confirmed HIGH)")
+    print("SNAPSHOT SUMMARY — walk the arc (calm -> drift -> building -> confirmed HIGH -> final)")
     print("=" * 78)
     for snap_date, tables in snapshots.items():
-        a, g, r, n = (tables["actuals"], tables["gl_actuals"],
-                      tables["reference_data"], tables["operational_notes"])
+        s_df, c_df, g, r, n = (tables["sales"], tables["conversions"], tables["gl_actuals"],
+                               tables["reference_data"], tables["operational_notes"])
 
-        # Hero May-period CPA = May acquisition spend (by document_date) / May conversions.
+        # Hero active-period CPA = May acquisition spend (by document_date) / May
+        # conversions present in the cut (by conversion_date — so the open period
+        # shows the gains that have actually landed).
         g_acq_may = g[(g["gl_account"] == shared.GL_ACCOUNT_ACQUISITION)
                       & (g["cost_center"] == hero.cost_center)
                       & (g["document_date"].str.startswith(shared.ACTIVE_PERIOD))]
-        a_hero_may = a[(a["entity"] == hero.entity) & (a["segment"] == hero.segment)
-                       & (a["product_type"] == hero.product_type)
-                       & (a["date"].str.startswith(shared.ACTIVE_PERIOD))]
-        conv = a_hero_may["volume_converted"].sum()
+        c_hero_may = _series_rows(c_df, hero)
+        c_hero_may = c_hero_may[c_hero_may["conversion_date"].str.startswith(shared.ACTIVE_PERIOD)]
+        conv = len(c_hero_may)
         hero_cpa = (g_acq_may["amount"].sum() / conv) if conv else float("nan")
         hero_var = (hero_cpa / hero.base_cpa - 1.0) * 100 if conv else float("nan")
 
-        # Fallout rate (active period to date) for the fallout series.
-        a_fo = a[(a["entity"] == fallout.entity) & (a["segment"] == fallout.segment)
-                 & (a["date"].str.startswith(shared.ACTIVE_PERIOD))]
-        fo_in = a_fo["volume_in"].sum()
-        fo_rate = (a_fo["volume_lost"].sum() / fo_in * 100) if fo_in else float("nan")
+        # Fallout (trailing matured window), derived by anti-join. We look at the
+        # fallout series' submissions in the 7 days ending at the maturity cutoff
+        # (sale_date <= snap - max lag) — old enough that their gains have landed —
+        # and take the share with no matching conversion. A trailing window (vs.
+        # cumulative MTD) reflects the *current* fallout rate, so the ramp shows.
+        cutoff = dt.date.fromisoformat(snap_date) - dt.timedelta(days=config.conv_lag_max_days)
+        window_start = (cutoff - dt.timedelta(days=7)).isoformat()
+        s_fo = _series_rows(s_df, fallout)
+        s_fo = s_fo[(s_fo["sale_date"] > window_start) & (s_fo["sale_date"] <= cutoff.isoformat())]
+        fo_total = len(s_fo)
+        matched = s_fo["customer_key"].isin(set(c_df["customer_key"])).sum()
+        fo_rate = ((fo_total - matched) / fo_total * 100) if fo_total else float("nan")
 
         # Late/accrued entries present (document month precedes posting month).
         late = g[g.apply(lambda x: x["document_date"][:7] < x["posting_date"][:7], axis=1)]
         n_forecast = int((r["reference_type"] == "forecast").sum())
-        west_actuals = int(((a["entity"] == "ERCOT West")).sum())
+        new_sales = len(_series_rows(s_df, new))
 
-        print(f"\n[{snap_date}]  rows: actuals={len(a)} gl={len(g)} ref={len(r)} notes={len(n)}")
+        print(f"\n[{snap_date}]  rows: sales={len(s_df)} conv={len(c_df)} gl={len(g)} "
+              f"ref={len(r)} notes={len(n)}")
         print(f"   hero May CPA       : {hero_cpa:7.2f}  vs plan {hero.base_cpa:.2f}  "
-              f"({hero_var:+.1f}%)")
-        print(f"   fallout rate (MTD) : {fo_rate:5.1f}%  (baseline ~{(1-fallout.base_conv_rate)*100:.0f}%, "
-              f"daily target ~{config.fallout_target_rate*100:.0f}% by day {shared.SNAPSHOT_DATES[-1].day})")
+              f"({hero_var:+.1f}%)  [{conv} conv landed]")
+        print(f"   fallout (matured)  : {fo_rate:5.1f}%  (n={fo_total}; baseline ~{(1-fallout.base_conv_rate)*100:.0f}%, "
+              f"daily target ~{config.fallout_target_rate*100:.0f}% by day {shared.LAST_INMONTH_SNAPSHOT.day})")
         print(f"   forecast rows      : {n_forecast:2d}   late/accrued GL rows: {len(late)}   "
-              f"ERCOT West actuals: {west_actuals}")
+              f"new-series ({new.region}) sales: {new_sales}")
         print(f"   notes visible      : {len(n)}")
 
 
@@ -213,9 +241,11 @@ def parse_args(argv=None):
     p.add_argument("--history-months", type=int, default=None,
                    help=f"override trailing-history depth (default: {shared.HISTORY_MONTHS})")
     p.add_argument("--cpa-spike-magnitude", type=float, default=None,
-                   help="hero cumulative CPA-vs-plan by month end (default: 0.22)")
+                   help=f"hero spend-side cumulative CPA-vs-plan uplift by month end "
+                        f"(default: {shared.NarrativeConfig.cpa_spike_magnitude})")
     p.add_argument("--fallout-target-rate", type=float, default=None,
-                   help="fallout series volume_lost/volume_in by month end (default: 0.23)")
+                   help=f"fallout series daily fell_out/submissions rate by month end "
+                        f"(default: {shared.NarrativeConfig.fallout_target_rate})")
     p.add_argument("--forecast-divergence", type=float, default=None,
                    help="forecast CPA divergence from plan (default: 0.12)")
     p.add_argument("--noise-sd", type=float, default=None,
@@ -242,7 +272,11 @@ def main(argv=None) -> int:
     print(f"  series={len(shared.SERIES)}  snapshots={[d.isoformat() for d in shared.SNAPSHOT_DATES]}")
 
     # --- generate full-timeline tables ---
-    actuals = gen_sales.generate(config)
+    # gen_sales produces the submissions feed (no outcome); gen_conversions decides
+    # which submissions convert and emits the gains (sharing customer_key, so
+    # fallout is the unmatched complement).
+    sales = gen_sales.generate(config)
+    conversions = gen_conversions.generate(config, sales)
     gl = gen_gl.generate(config)
     reference = gen_reference.generate(config)
     notes = gen_notes.generate(config)
@@ -250,7 +284,7 @@ def main(argv=None) -> int:
     # --- load static config + validate (halt loudly on any problem) ---
     gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv", dtype={"gl_account": str})
     try:
-        validate(actuals, gl, reference, notes, gl_mapping)
+        validate(sales, conversions, gl, reference, notes, gl_mapping)
     except PipelineHalt as e:
         print(f"\nPIPELINE HALTED\n{e}", file=sys.stderr)
         return 1
@@ -258,7 +292,7 @@ def main(argv=None) -> int:
     # --- assemble + write cumulative snapshots ---
     snapshots = {}
     for snap_date in shared.SNAPSHOT_DATES:
-        tables = cut_snapshot(actuals, gl, reference, notes, snap_date)
+        tables = cut_snapshot(sales, conversions, gl, reference, notes, snap_date)
         snapshots[snap_date.isoformat()] = tables
         folder = SNAPSHOTS_DIR / snap_date.isoformat()
         folder.mkdir(parents=True, exist_ok=True)
