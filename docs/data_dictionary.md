@@ -57,6 +57,12 @@ downstream. Because conversions lag (a gain lands days after the sale), fallout 
 which is the realistic, no-lookahead behavior. Only the fallout series degrades its conversion
 rate across the active period, lifting its unmatched share.
 
+*Runtime display:* the analytics layer (`data_merger`) surfaces fallout **as computed at each
+snapshot** — the raw unmatched share in that cut, pending sales included — so it climbs across
+the pre-close window and partially settles post-close as lagged gains land. It is shown as a
+lagging signal (with confidence context downstream), **never suppressed** for being unresolved
+(§9). See `decisions_log.md` → Build Sequence 3.
+
 *`customer_key` convention:* each series numbers its submissions within its own block
 (`(series_index+1) × 1,000,000 + local_index`), so keys are plain integers yet stable —
 retuning one series' volume does not renumber the others.

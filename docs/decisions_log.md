@@ -339,6 +339,74 @@ unchanged.
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core)
+
+### data_loader is the single I/O owner: read → gate → type, one structure for both modes
+**Chose:** `app/analytics/data_loader.py` reads the raw files once (as strings), runs the
+ingestion validator and **halts loudly on bad data before returning**, then types/normalizes
+and hands back one dict of dataframes — identical in snapshot or live mode. Config tables are
+read once and reused to build the validation contract (extracted `build_contracts()` from the
+validator). Dates parse with `errors="raise"` (never a silent `NaT`); dimension keys stay
+**canonical strings** (`contract_term_months` = `"12"`/`""`, never `12.0`/`"nan"`).
+**Rejected:** A passthrough loader with validation wired as a separate downstream step;
+coercing dates silently; leaving keys as pandas-inferred floats.
+**Why:** "Never analyze unvalidated data" is a standing rule, so the gate belongs at the mouth
+of the pipeline. String-native dimension keys make every fact↔reference↔config join match
+byte-for-byte (a float `12.0` key silently fails to join an M2M `""`), and one disk read keeps
+config from being loaded twice.
+
+### data_merger aggregates actuals to leaf×period, then joins plan 1:1 (never record-level)
+**Chose:** Roll sales/conversions up to **leaf × period**, then 1:1 left-join the monthly plan;
+GL is **resolved only** (geography attached at unit grain, overhead filtered out) — its period
+bucketing/completeness is `gl_processor`'s job. Forecast rides in parallel `*_ref_fc` columns;
+fallout is reconciled on `customer_key`. Conversions are counted on both axes (`landed` by
+conversion_date for CPA/volume; `cohort` by sale month).
+**Rejected:** Record-level join of facts to the monthly plan (multiplies each actual by 3–13
+monthly plan rows — a row explosion); aggregating GL in the merger.
+**Why:** `reference_data` is a monthly target and the feeds carry a year of trailing history;
+aggregate-then-join is how a real variance pipeline avoids the explosion and hands the metrics
+layer clean comparison frames at the grain it needs.
+
+### gl_processor: completeness keyed to the document month, close = following-month day 8
+**Chose:** `period = document_date` month — **spend ties to the month it belongs to**. Close
+date = day `period_close_day` (8) of the *following* month (May closes June 8). State per
+`(unit, period)`, first match: `open` → `accrued` → `restated` → `closed`. Late invoices
+(posting month ≠ document month) are flagged in dedicated columns, attributed to the document
+month, **independent of the state label** (so both engineered invoices are always detected).
+**Rejected:** Period by posting date; the literal spec order `restated → accrued` (leaves
+`accrued` unreachable and mislabels the late-April invoice).
+**Why:** A cost belongs to the period it documents to, not when it happened to post; checking
+`accrued` before `restated` makes a prior-month invoice landing in the open month read as
+`accrued` (the §10 intent). Close on the following-month day-8 matches the post-close June-8
+snapshot and the conversion-lag SLA.
+**Status (open):** under `current_period = snapshot month`, the post-close May true-up reads
+`accrued` (it posted in the current month) rather than `restated`; labeling it `restated` would
+require treating a post-close snapshot as *settling the prior month*. Deferred until the output
+is reviewed against the demo.
+
+### Fallout is shown raw, as computed at each snapshot — not lag-filtered
+**Chose:** Report fallout exactly as it stands in each cut: `unmatched` = submissions with no
+matching gain *yet*, pending (not-yet-landed) cohorts included. No "resolved-cohort" filter.
+**Rejected:** Holding back cohorts younger than the conversion lag (or the period close) from
+the displayed fallout.
+**Why:** The demo's value is *watching the fallout signal build* — raw unmatched climbs across
+the pre-close snapshots (≈21.9k → 22.4k → 22.8k → 23.4k) and partially settles post-close as
+lagged gains land; that lagging behavior **is** the story, and suppressing it defeats the point.
+Consistent with §9 (never blank — label/contextualize, don't hide): the lag/confidence caveat
+belongs to the narrative + risk layers, not to dropping the number. Supersedes the earlier
+(un-built) intent to exclude pending cohorts from the fallout rate.
+
+### CPA stays unit-grain; volume/margin stay leaf-grain (roll up to join)
+**Chose:** Keep CPA at the `(entity, region, segment)` unit grain (where GL resolves) and
+volume/fallout/margin at leaf grain; roll leaves up to the unit when a join needs it, rather
+than forcing one shared grain.
+**Rejected:** Coercing everything to a single grain in the merger.
+**Why:** GL carries no product/customer dimensions, so unit-grain CPA is the honest grain;
+forcing a leaf grain would fabricate a precision the ledger doesn't have. Findings can carry a
+different grain per metric (§14).
+
+---
+
 ## Template for new entries
 
 ```
