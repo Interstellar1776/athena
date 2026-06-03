@@ -532,6 +532,54 @@ references, no recomputation. Documented now so module 1's structure is settled 
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — module 1: metrics_calculator, build-time)
+
+> Surfaced while building `app/analytics/metrics_calculator.py` and walking the demo-arc snapshots.
+> Each refines a recently-recorded planning decision; the reasoning is here, the docs (§6/§10/§14)
+> updated to match.
+
+### `is_projectable` is a calendar fact (current period), not `gl_completeness_state == "open"`
+**Chose:** `is_projectable = (period == the snapshot's month)` — the single period still accumulating
+toward its end — emitted identically for the unit (CPA) and leaf (economics) frames.
+**Rejected:** The planning decision's literal `is_projectable = (gl_completeness_state == "open")`.
+**Why:** The CLI walk showed `gl_processor` marks a **prior** month still inside its settlement grace
+as `open` (e.g. April at a May-1 snapshot, since April closes May 8). That month is *over* — projecting
+it to "period end" is meaningless. Conversely a current-month unit with **no GL posted yet** has
+`state == NaN` but is plainly projectable. So GL-completeness (a spend-settlement concept that spans
+months) is the wrong basis for projectability (a "is this period still open" concept). The calendar
+test captures the intent exactly and makes unit and leaf agree. Supersedes the planning wording in
+§6/§14.
+
+### `unit_economics_flag` is dropped from metrics_calculator (risk_classifier owns it)
+**Chose:** metrics_calculator does **not** emit `unit_economics_flag`; it supplies the inputs (T12M CPA
+in the `cpa` frame, LTV in `economics`). `risk_classifier` computes the §11 CPA-vs-LTV / unit-economics
+inversion alerts where the thresholds live.
+**Rejected:** Computing the literal §14 `CPA + COGS_per_unit > price_per_unit` in metrics.
+**Why:** That literal form is dimensionally inconsistent — CPA is **per-acquisition** (one-time per
+customer, $65–161 in the data) while price/COGS are **per-period unit** rates ($58–94) — so it fired on
+~90% of unit×periods including calm baselines (cry-wolf). Amortized to a common lifetime basis it reduces
+algebraically to `CPA > LTV`, i.e. it *is* the CPA-vs-LTV inversion. So the per-period flag is either
+broken or redundant; the honest home for the inversion is the threshold layer. §14 keeps the field,
+populated downstream.
+
+### CPA open-period label named `gl_partial` (not `gl_extrapolated`); `cogs_method` gains `actual`
+**Chose:** The open-period to-date CPA label is **`gl_partial`**; the time-varying current COGS label is
+**`actual`** (added to the `cogs_method` enum).
+**Why:** With full-period scaling owned by `projection_engine` (planning decision 1), the metrics-layer
+open value is the period-to-date figure, not an extrapolation — `gl_extrapolated` was a misnomer.
+`actual` distinguishes the current effective COGS rate from the `plan_input` / `trailing_avg` / `estimated`
+fallbacks now that COGS is time-varying. Both reconcile §14's enums with the implemented behavior.
+
+### Observation (not a change): today's data has no plan-vs-actual COGS delta
+**Noted:** the time-varying/effective-dated COGS machinery is built and correct, but on the current
+snapshots `cogs_actual == cogs_plan` everywhere and every row resolves to `actual`. The leaves with later
+`effective_date`s (Direct_Mail West 2024-03, Telemarketing West 2024-05-15) are **new segments** whose
+periods all begin at/after their effective date, so no period falls back to `plan_input`, and config==plan
+by construction (the revision-6 invariant). The COGS-delta path will exercise the moment the generator
+emits a rate change that diverges from a previously-set plan — a future generator tweak, not a code gap.
+
+---
+
 ## Template for new entries
 
 ```

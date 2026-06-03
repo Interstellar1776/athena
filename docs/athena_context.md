@@ -144,12 +144,16 @@ On any given day within a period, Athena:
 
 The signal Athena always answers: *"If current trends continue, where will we end the period, and how does that compare to plan?"*
 
-### Projection only runs on open periods **[LOCKED]**
-Projection is the proactive question — it is meaningful **only while a period is open** (still
-accumulating). A closed or restated period is settled: it has actuals, not a projection.
-`metrics_calculator` resolves each period's GL-completeness state once and emits a boolean
-`is_projectable` (true **iff** `open`); `projection_engine` reads that flag and never re-derives
-the state. See §10 (period lifecycle) and §14 (`is_projectable`).
+### Projection only runs on the current period **[LOCKED]**
+Projection is the proactive question — it is meaningful **only for the period still accumulating
+toward its end**, i.e. the month the snapshot falls in. A closed or restated period is settled (it
+has actuals, not a projection); and a *prior* month still inside its settlement grace is **not**
+projectable either — it is over, even if its GL is still completing. So `is_projectable` is a
+**calendar fact**: `is_projectable = (period == the snapshot's month)`. `metrics_calculator` emits
+it once (identically for unit and leaf frames); `projection_engine` reads the flag and never
+re-derives it. *(Note: this is deliberately not `gl_completeness_state == "open"` — `gl_processor`
+also marks a settling prior month `open`, which must not be projected; rationale in
+`decisions_log.md`.)* See §10 (period lifecycle) and §14 (`is_projectable`).
 
 ### Confidence indicators
 Every projection shows a confidence indicator reflecting how much of the period has elapsed. Example: *"Projected month-end CPA: $142 (linear) / $138 (weighted) — based on 8 of 30 days. Low confidence."* Early-period findings are **never suppressed**. Low confidence is shown, not hidden; the user decides how to weight it.
@@ -280,20 +284,27 @@ precedes the close (June 8), evaluating `accrued` first yields the accounting-co
 `decisions_log.md` for the reasoning and the note that a true `restated` demo would require posting
 the true-up after the close day.)*
 
-**CPA estimation hierarchy** (applied in order when GL spend is incomplete):
-1. Full period GL spend posted → **real CPA** (authoritative, no flag)
-2. Partial spend → **extrapolated CPA** (scaled to full period on historical patterns, flagged estimated)
-3. No spend yet → **trailing 3-month average CPA**, flagged estimated
-4. No history → **plan CPA**, flagged estimated from plan
+**CPA estimation hierarchy** (applied in order; method label in `actual_method`):
+1. Authoritative spend (period `closed`/`restated`/`accrued`) → **`real`** CPA = spend ÷ conversions (no flag)
+2. Open period with partial spend posted → **`gl_partial`** CPA = spend-to-date ÷ conversions-to-date (flagged estimated, `is_projectable`). *Full-period scaling is `projection_engine`'s job, not this layer's — `gl_partial` is the period-to-date value, not an extrapolation.*
+3. No spend yet (≥3 months GL history) → **`trailing_avg`** CPA (Σspend ÷ Σconversions over the prior 3 months), flagged estimated
+4. No history → **`plan_input`** CPA (plan `cpa_ref`), flagged estimated from plan
 
-Both **monthly CPA** (operational variance — running hot this month?) and **trailing-12-month CPA** (unit economics — sustainable vs. LTV?) are calculated.
+`actual_method` vocabulary: `real` / `gl_partial` / `trailing_avg` / `plan_input`. **Monthly**,
+**trailing-3-month**, and **trailing-12-month** CPA are all calculated (monthly = operational
+variance; T3M = responsive compression basis; T12M = slow-burn unit economics vs. LTV). The
+trailing bases are aggregate ratios (Σspend ÷ Σconversions), not means of monthly ratios.
 
 ### COGS — Cost of Goods Sold **[LOCKED]**
-COGS is a **plan input** at entity/segment level, not calculated from transactions, not at customer level. Configured in a reference table with a `product_type` sub-dimension (e.g. term vs. month-to-month in energy).
+COGS is a **configured input** (not calculated from transactions, not at customer level), held in a
+reference table with a `product_type` sub-dimension. It is **time-varying / effective-dated**, not a
+single static figure: the current/actual rate is updated over time (generally monthly) via
+effective-dated rows, so genuine **plan-vs-actual** deltas can arise. The current/actual COGS for a
+period is the configured rate whose `effective_date` is the latest on/before period-end.
 
-**Comparison modes** (per entity/segment): `linear_trend` (trailing N-month avg — SaaS/stable), `prior_year_same_period` (energy/retail/seasonal), `plan_vs_actual` (any cost plan), `hybrid` (plan-vs-actual primary, prior-year as context — most complete).
+**Comparison modes** (per entity/segment, in `cogs_comparison_mode`): `linear_trend` (trailing N-month avg — SaaS/stable), `prior_year_same_period` (energy/retail/seasonal), `plan_vs_actual` (any cost plan), `hybrid` (plan-vs-actual primary, prior-year as context — most complete). **`metrics_calculator` exposes the comparison inputs** (current / plan / forecast / trailing-3 / prior-year) and the per-leaf mode; **`risk_classifier` evaluates the mode** to compute the COGS-spike/trend delta.
 
-**Fallback:** current input → trailing 3-period average (flagged) → plan COGS (flagged).
+**Fallback** (method label `cogs_method`): current effective rate (`actual`) → trailing 3-period average (`trailing_avg`) → plan COGS `cogs_ref` (`plan_input`) → `estimated`.
 
 ### LTV — Lifetime Value **[LOCKED]** *(hierarchy detailed — rationale in `decisions_log.md`)*
 **Calculate first, fall back to plan.** Resolved in this order, each output labeled with the method
@@ -391,10 +402,10 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
     "days_elapsed": 8,
     "days_in_period": 31,
     "confidence": "low",                       # based on % of period elapsed
-    "is_projectable": True,                    # true iff gl_completeness_state == "open" (§6); projection_engine reads this, never re-derives
+    "is_projectable": True,                    # true iff period == snapshot's month (the current, still-accumulating period — §6); projection_engine reads this, never re-derives
 
     "actual": 142.00,
-    "actual_method": "gl_extrapolated",        # real / gl_extrapolated / trailing_avg / plan_input
+    "actual_method": "gl_partial",             # real / gl_partial / trailing_avg / plan_input (§10)
 
     "reference_value": 118.00,
     "reference_type": "plan",                  # plan or forecast
@@ -408,12 +419,12 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
     "projected_period_end_weighted": 144.00,   # trailing-21-day linear regression, slope to period end (§6)
 
     "cogs_per_unit": 0.048,
-    "cogs_method": "plan_input",               # plan_input / trailing_avg / estimated
+    "cogs_method": "actual",                   # actual / trailing_avg / plan_input / estimated (§10)
     "ltv": 620.00,
     "ltv_method": "calculated_retention",      # calculated_retention / calculated_term / plan_input / unresolved (§10)
     "margin_per_unit": 18.40,
     "margin_method": "calculated",             # calculated / plan_input
-    "unit_economics_flag": False,              # True if CPA + COGS > revenue per unit
+    "unit_economics_flag": False,              # set by risk_classifier (CPA-vs-LTV basis), not metrics_calculator — see decisions_log (§11 inversion alerts)
 
     "gl_completeness_state": "open",           # open / closed / restated / accrued (§10 lifecycle)
     "frozen_reference": None,                  # settled metric values persisted at close; the baseline a restatement measures against
