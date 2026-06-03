@@ -18,7 +18,7 @@ enterprise data mart delivers pre-dimensioned facts:
 | entity | string | no | Market / ISO (e.g. ERCOT, PJM) — top of the geography | Must exist in the series roster |
 | region | string | no | Sub-market region (North/South/West/East) | Must exist in the series roster |
 | service_territory | string | no | Delivery utility / TDU under the market (Oncor, CenterPoint, AEP_Texas, PECO, BGE) | Must exist in the series roster |
-| segment | string | no | Acquisition channel / cohort / lane / SKU | Must exist in the series roster |
+| segment | string | no | Acquisition channel: `Web_Direct` / `Door_to_Door` / `Telemarketing` / `Inbound_Call_Center` / `Direct_Mail` / `Online_Partner` | Must exist in the series roster |
 | product_type | string | no | Term / Month_to_Month | Must match cogs_config |
 | contract_term_months | int | yes | Contract length for Term (12/24/36); **null for Month_to_Month** | If present ∈ {12,24,36} |
 | customer_size_tier | string | no | residential / small_C&I / large_C&I | — |
@@ -26,6 +26,15 @@ enterprise data mart delivers pre-dimensioned facts:
 
 A fact/reference row's full dimension tuple (these eight fields, in this order) is its join
 identity — it must match exactly one series in the roster.
+
+**Roster = units × mix.** The generator's backbone is ~12 channel×geography *units* (one set of
+economics + total volume each). Each unit fans out into a small **mix** of 2–3 leaf series
+across `product_type` / `contract_term_months` / `customer_class` — so a real channel×region
+carries a spread of products/customers, not a single flavor. The unit's volume is split across
+the mix by weight; **economics are uniform across a unit's leaves** (the product/customer dims
+vary the *mix*, not the per-unit numbers — they can be made to drive economics later).
+`customer_size_tier` stays unit-level (residential and C&I are not blended under one unit). GL
+spend and `gl_mapping` stay at the **unit** grain (the leaf mix doesn't affect the ledger).
 
 ---
 
@@ -77,19 +86,29 @@ reporting lag. (Renamed from the former single `actuals.csv`; `revenue_per_unit`
 ---
 
 ## gl_actuals.csv
-Raw general-ledger spend entries. Joined to actuals via `gl_mapping`. Source of CPA actuals and late-invoice detection.
+Raw general-ledger spend — a **dimension-free** ledger. It carries no
+entity/region/segment; the business meaning is reconstructed via `gl_mapping.csv`
+keyed on `(cost_center, gl_account, vendor)`. Source of CPA actuals and
+late-invoice/restatement detection. `cost_center` = WHO spent (the acquisition
+channel), `gl_account` = WHAT (media / hours / commissions / bonuses / overhead).
 
 | Field | Type | Nullable | Definition | Validation / notes |
 |---|---|---|---|---|
-| posting_date | date | no | Date the entry hit the ledger | Must parse; not in the future |
-| document_date | date | no | Invoice/document date — the period the cost covers | Must parse; gap vs. posting_date drives late-invoice + accrued detection |
-| cost_center | string | no | Maps to entity/segment via gl_mapping | Must exist in gl_mapping |
-| gl_account | string | no | Maps to spend category via gl_mapping | Must exist in gl_mapping |
-| amount | float | no | Spend amount | No negative spend (validator sanity check) unless modeling reversals |
-| vendor | string | yes | Vendor name | — |
+| posting_date | date | no | Date the entry hit the ledger (snapshots cut on this) | Must parse; not in the future |
+| document_date | date | no | Invoice/document date — the period the cost covers | gap vs. posting_date drives late-invoice + accrued/restated detection |
+| cost_center | string (numeric code) | no | The acquisition channel / business unit (e.g. `5010`) | (cost_center, gl_account, vendor) must exist in gl_mapping |
+| cost_center_description | string | no | Human label (e.g. "Web Direct") | denormalized for ease of use |
+| gl_account | string (numeric code) | no | Expense type (e.g. `6010`) | must exist in gl_mapping |
+| gl_account_description | string | no | Human label (e.g. "Media") | denormalized |
+| amount | float | no | Spend amount | ≥ 0 (no negative spend unless modeling reversals) |
+| vendor | string | no | Supplier; part of the mapping key (resolves geography / disambiguates channel) | — |
 | description | string | yes | GL line description; feeds retrieval/context layer | Free text |
 
-*Generator notes:* to demo `restated`/`accrued` states, post an entry in a later snapshot with a `document_date` in an earlier period.
+*Generator notes:* spend is emitted as **periodic invoices** (per-channel cadence — see
+gl_mapping notes). The hero CPA spike is engineered here (its weekly media invoices ramp
+across the active period); sales/conversions stay flat. The engineered late April invoice
+(posts May, document April → `accrued`) and the post-close May true-up (posts June, document
+May → `restated`) exercise the completeness states.
 
 ---
 
@@ -101,13 +120,25 @@ Plan and forecast targets. Same schema, distinguished by `reference_type`.
 | date | date | no | Reporting period (plan = first-of-month; forecast = issue date) | Must parse |
 | *(dimensions)* | — | — | The eight hierarchy fields (see *The dimension hierarchy* above) | Full tuple must match a series |
 | reference_type | string | no | `plan` or `forecast` | Must be one of the two |
-| volume_in_ref | int | no | Reference inbound volume | ≥ 0 |
-| volume_converted_ref | int | no | Reference conversions | ≥ 0 |
-| cost_ref | float | no | Reference spend (for CPA) | ≥ 0 |
-| cpa_ref | float | no | Reference CPA | ≥ 0 |
-| cogs_ref | float | no | Reference COGS per unit | ≥ 0 |
+| volume_in_ref | int | no | Reference inbound volume (**leaf grain** — vs. record-level sales aggregated per sub-segment) | ≥ 0 |
+| volume_converted_ref | int | no | Reference conversions (**leaf grain** — vs. conversions aggregated per sub-segment) | ≥ 0 |
+| cost_ref | float | no | Reference spend; the **unit plan cost allocated to the leaf** by planned conversions | ≥ 0 |
+| cpa_ref | float | no | Reference CPA (a **unit / channel×geography** target, repeated on the unit's leaves) | ≥ 0 |
+| cogs_ref | float | no | Reference COGS per unit — the **plan-COGS fallback** (§10); matches `cogs_config` (one source) | ≥ 0 |
 | ltv_ref | float | no | Reference LTV — fallback when calculated LTV unavailable | ≥ 0 |
 | margin_ref | float | no | Reference margin per unit — fallback | — |
+
+*Grain & GL tie-back:* **volume** targets are leaf-grain (compare to record-level actuals);
+**cost/CPA** targets are a unit (channel×geography) plan allocated across leaves, so
+`Σ cost_ref` over `(entity, region, segment)` is the unit's plan cost — which reconciles to
+actual GL acquisition spend (`gl_mapping` resolves GL to the same `(entity, region, segment)`),
+and `cpa_ref` is the plan CPA to compare against `GL spend ÷ conversions` at that grain. The
+orchestrator validates that **every acquisition unit `gl_mapping` resolves to has an
+active-period plan row.**
+
+*Plan realism:* `plan` volume/CPA default to the noise-free actual baseline (so the engineered
+spike/fallout is the only signal). A per-unit `plan_bias` ({"volume":…, "cpa":…}) can make the
+plan miss independently; empty by default.
 
 *Note:* `plan` rows are locked once a period begins; `forecast` rows update. The generator should emit at least `plan`; add `forecast` rows to demo the plan-vs-forecast-gap alert.
 
@@ -136,31 +167,61 @@ Qualitative commentary. Feeds the context/retrieval layer and is what lets the n
 ## Config / reference tables (`/config`)
 
 ### gl_mapping.csv
-| Field | Type | Notes |
-|---|---|---|
-| cost_center | string | GL cost center code |
-| gl_account | string | GL account number |
-| entity | string | Maps to Athena entity |
-| segment | string | Maps to Athena segment |
-| spend_category | string | e.g. acquisition_marketing, overhead |
+The bridge from the dimension-free ledger to the business. **One row per
+`(cost_center, gl_account, vendor)` combo** that appears in `gl_actuals.csv`,
+resolving it to a gain channel + geography. Must equal
+`shared.canonical_gl_mapping_rows()` (the orchestrator enforces this).
 
-### retention_config.csv
-Drives calculated LTV.
 | Field | Type | Notes |
 |---|---|---|
-| entity | string | — |
-| segment | string | — |
-| expected_retention_periods | float | Average retention in periods |
-| effective_date | date | When this input became active |
+| cost_center | string | numeric channel code (e.g. `5010`); 1:1 with `segment` |
+| cost_center_description | string | label (e.g. "Web Direct") |
+| gl_account | string | numeric expense-type code (e.g. `6010`) |
+| gl_account_description | string | label (e.g. "Media") |
+| vendor | string | supplier; resolves geography and disambiguates channel — the same `(cost_center, gl_account)` can map to different `(entity, region)` via different vendors |
+| segment | string | resolved gain channel (blank for overhead) |
+| entity | string | resolved market (blank for overhead) |
+| region | string | resolved region (blank for overhead) |
+| spend_category | string | `acquisition_marketing` (ties to a gain) or `overhead` (token, mapped out of CPA) |
+
+*Invoice cadence (drives GL-completeness states):* per-channel — **weekly** for
+Door_to_Door (the hero, so its commission spike shows each snapshot), Web_Direct,
+Telemarketing, Inbound_Call_Center; **monthly** (posts at month-end, in arrears)
+for Direct_Mail and Online_Partner, so those channels have no in-month spend early
+and their CPA falls back to an estimate until the post-close snapshot. Channels
+with a bonus account (Door_to_Door, Telemarketing) use GL account `6040`: for
+non-hero channels it's a carved slice of acquisition spend; for the **hero** it's
+an *additive* Q2 incentive surge paid at month-end (extra CPA damage that lands
+only in the post-close snapshot, alongside the restatement).
+
+Both config tables below are **derived from the roster and validated against it**
+(`shared.canonical_cogs_config_rows()` / `canonical_retention_config_rows()`; the orchestrator
+halts on any drift) — like `gl_mapping`, so they can never go stale. They're keyed by the **full
+dimension hierarchy, one row per sub-segment** (33 rows). Values are uniform within a unit today
+(the unit's single rate), but a unit can override `cogs`/`retention` by `product_type` or by an
+exact sub-segment (precedence: sub-segment > product_type > unit default) — the per-segment
+tuning knob.
 
 ### cogs_config.csv
+The standing COGS input. **COGS lives in two places by design (§10):** this table is the
+authoritative configured rate; `reference_data.cogs_ref` is the **plan COGS** at the bottom of
+the fallback chain (current input → trailing-avg → plan). Both derive from the same per-leaf
+value, so they can't disagree.
+
 | Field | Type | Notes |
 |---|---|---|
-| entity | string | — |
-| segment | string | — |
-| product_type | string | e.g. term / month_to_month; nullable if N/A |
-| cogs_per_unit | float | Cost per unit |
+| *(dimensions)* | — | The eight hierarchy fields (one row per sub-segment) |
+| cogs_per_unit | float | Cost per unit (resolved per sub-segment; uniform within a unit unless overridden) |
 | cogs_comparison_mode | string | linear_trend / prior_year_same_period / plan_vs_actual / hybrid |
+| effective_date | date | When this input became active (the unit's history start) |
+
+### retention_config.csv
+Drives calculated LTV (config-only — the plan carries computed `ltv_ref`, so no duplication).
+
+| Field | Type | Notes |
+|---|---|---|
+| *(dimensions)* | — | The eight hierarchy fields (one row per sub-segment) |
+| expected_retention_periods | float | Average retention in periods (resolved per sub-segment) |
 | effective_date | date | When this input became active |
 
 ### system_config.yaml
@@ -207,7 +268,7 @@ flowchart TD
     glmap["config/gl_mapping.csv<br/>(must equal canonical_gl_mapping_rows)"]
 
     shared --> gsales["gen_sales(config)<br/>→ sales.csv (submissions)"]
-    shared --> ggl["gen_gl(config)<br/>→ gl_actuals.csv (spend + late invoice)"]
+    shared --> ggl["gen_gl(config)<br/>→ gl_actuals.csv (periodic invoices + late/restatement)"]
     shared --> gref["gen_reference(config)<br/>→ reference_data.csv (plan/forecast)"]
     shared --> gnotes["gen_notes(config)<br/>→ operational_notes.csv"]
 

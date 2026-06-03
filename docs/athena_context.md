@@ -164,7 +164,7 @@ The core loop — operational data → deterministic analytics → anomaly detec
 
 | Industry | Operational signal | Example Athena alert |
 |---|---|---|
-| Retail Energy | CPA by acquisition channel | "Paid Search CPA is 22% above plan in ERCOT North — 3rd consecutive week" |
+| Retail Energy | CPA by acquisition channel | "Door-to-Door CPA is 22% above plan in ERCOT North — 3rd consecutive week" |
 | SaaS | Trial conversion / churn by cohort | "Enterprise trial-to-paid conversion dropped 18% — cohort started 3 weeks ago" |
 | Logistics | On-time delivery rate by lane | "Dallas → Chicago lane fallout trending 2x above baseline this week" |
 | Retail | Inventory turnover by SKU/region | "SKU 4821 velocity down 31% vs. plan in Southeast" |
@@ -210,7 +210,7 @@ data/snapshots/
 
 ### Demo narrative arc (reference implementation)
 - **May 1** — on track, minimal alerts. Establishes Athena doesn't cry wolf.
-- **May 8** — Paid Search CPA drifting up. MEDIUM projection alert, low confidence. Weighted trend shows it emerging.
+- **May 8** — Door-to-Door CPA drifting up (Q2 field-sales push: rising commissions/incentives). MEDIUM projection alert, low confidence. Weighted trend shows it emerging.
 - **May 15** — drift continues, a second channel shows volume fallout. Two MEDIUM, one approaching HIGH.
 - **May 22** — CPA spike confirmed, fallout above threshold, CPA-vs-LTV compression fires. Multiple HIGH alerts. The narrative explains the likely cause, references the relevant operational note, recommends action. This is what Athena caught three weeks before close.
 - **June 8 (post-close)** — the settled month. Books are closed (`period_close_day`) and every in-period gain has landed, so this is May's final actuals: the CPA and fallout that the May-22 projection warned about, now confirmed. Lets the demo contrast pre-close *projection* against final *actuals*. (Fallout, a lagging signal, only fully resolves here — by design, you can't confirm an outcome that hasn't landed.)
@@ -237,7 +237,7 @@ data/snapshots/
 **Intent:** Every metric has a defined calculation and an ordered fallback chain. Every output is labeled with the method that produced it, so the user always knows whether a number is real or estimated.
 
 ### CPA — Cost Per Acquisition **[LOCKED]**
-CPA and COGS are **separate metrics**, never conflated. CPA actual derives from GL spend data. Each GL entry carries posting date, document date, cost center (→ entity/segment via `gl_mapping`), GL account (→ spend category), amount, vendor. The gap between posting and document date enables automatic late-invoice detection without accrual flags.
+CPA and COGS are **separate metrics**, never conflated. CPA actual derives from GL spend data. The ledger (`gl_actuals`) is **dimension-free**: each entry carries posting date, document date, cost center (the channel), GL account (the expense type), amount, and vendor. The business resolution — gain channel + geography — is reconstructed via `gl_mapping`, keyed on `(cost_center, gl_account, vendor)`; **CPA is computed at the channel × geography (entity/region/segment) grain**, not per customer attribute. The gap between posting and document date enables automatic late-invoice / restatement detection without accrual flags.
 
 **GL completeness states** (Python evaluates in order per entity/segment/period):
 
@@ -315,7 +315,7 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 
 - **`sales.csv`** — customer_key, sale_date, *(dimensions)* — record-level submissions (no outcome; a sale doesn't know its fate). The fallout denominator
 - **`conversions.csv`** — customer_key, sale_date, conversion_date, *(dimensions)*, price_per_unit (nullable) — record-level gains; joins to `sales` on customer_key. **Fallout = submissions with no matching conversion** (anti-join), so it's only resolved once gains have landed
-- **`gl_actuals.csv`** — posting_date, document_date, cost_center, gl_account, amount, vendor, description (nullable, feeds RAG)
+- **`gl_actuals.csv`** — posting_date, document_date, cost_center (+description), gl_account (+description), amount, vendor, description — **dimension-free** raw ledger; resolves to channel+geography via `gl_mapping` keyed on (cost_center, gl_account, vendor)
 - **`reference_data.csv`** — date, *(dimensions)*, reference_type (plan/forecast), volume_in_ref, volume_converted_ref, cost_ref, cpa_ref, cogs_ref, ltv_ref, margin_ref
 - **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds RAG)
 
@@ -332,8 +332,9 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 ```python
 {
     "finding_id": "F-001",
-    "entity": "ERCOT North",
-    "segment": "Paid Search",
+    "entity": "ERCOT",
+    "region": "North",
+    "segment": "Door_to_Door",
     "product_type": "Term",
     "metric": "cost_per_acquisition",
     "period": "2024-05",

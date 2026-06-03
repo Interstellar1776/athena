@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 import numpy as np
@@ -133,8 +133,16 @@ SERVICE_TERRITORIES = {
     "PJM": ["PECO", "BGE"],
 }
 
-# Acquisition channel
-SEGMENTS = ["Paid Search", "Door_to_Door", "Broker", "Affiliate"]
+# Acquisition channel — realistic acquisition-method taxonomy. `segment` is the
+# gain channel; the GL cost_center mirrors it 1:1 (see §4).
+SEGMENTS = [
+    "Web_Direct",          # direct-on-website / paid digital
+    "Door_to_Door",        # field sales
+    "Telemarketing",       # outbound calling
+    "Inbound_Call_Center", # inbound calls
+    "Direct_Mail",         # direct mail campaigns
+    "Online_Partner",      # affiliate / online partners
+]
 
 # Product
 PRODUCT_TYPES = ["Term", "Month_to_Month"]
@@ -163,24 +171,60 @@ DIMENSION_COLUMNS = [
     "product_type", "contract_term_months", "customer_size_tier", "customer_class",
 ]
 
-# Segments whose operations run on weekdays only (field sales, broker desks).
-# Others (digital channels) run every day with only a mild weekend dip.
-WEEKDAY_ONLY_SEGMENTS = {"Door_to_Door", "Broker"}
+# Segments whose operations run on weekdays only (field sales, call-center desks).
+# Digital / always-on channels (web, direct mail response, online partners) run
+# every day with only a mild weekend dip.
+WEEKDAY_ONLY_SEGMENTS = {"Door_to_Door", "Telemarketing", "Inbound_Call_Center"}
 
 
 # ---------------------------------------------------------------------------
-# 4. GL accounts
+# 4. GL chart — cost centers, accounts, per-channel routing & cadence
 # ---------------------------------------------------------------------------
-# The minimal chart-of-accounts fragment GL entries post against. Only
-# acquisition spend feeds CPA; overhead is mapped out by gl_mapping downstream.
+# The raw ledger (gl_actuals) is dimension-free: cost_center = WHO spent (the
+# acquisition channel / business unit), gl_account = WHAT was spent on (media,
+# hours, commissions, bonuses, overhead). A mapping table keyed on
+# (cost_center, gl_account, vendor) reconstructs the gain channel + geography
+# (canonical_gl_mapping_rows, §6). cost_center mirrors the channel 1:1.
 
-GL_ACCOUNT_ACQUISITION = "6010"   # spend_category -> acquisition_marketing
-GL_ACCOUNT_OVERHEAD = "6900"      # spend_category -> overhead
-
-GL_SPEND_CATEGORY = {
-    GL_ACCOUNT_ACQUISITION: "acquisition_marketing",
-    GL_ACCOUNT_OVERHEAD: "overhead",
+# Cost centers = channels. segment -> (numeric code, description).
+COST_CENTERS = {
+    "Web_Direct":          ("5010", "Web Direct"),
+    "Door_to_Door":        ("5020", "Door-to-Door Field Sales"),
+    "Telemarketing":       ("5030", "Telemarketing"),
+    "Inbound_Call_Center": ("5040", "Inbound Call Center"),
+    "Direct_Mail":         ("5050", "Direct Mail"),
+    "Online_Partner":      ("5060", "Online Partner"),
 }
+# A single non-acquisition cost center (token overhead, mapped out of CPA).
+OVERHEAD_COST_CENTER = ("5900", "Corporate Overhead")
+
+# GL accounts = expense type. code -> (description, spend_category).
+GL_ACCOUNTS = {
+    "6010": ("Media", "acquisition_marketing"),
+    "6020": ("Labor Hours", "acquisition_marketing"),
+    "6030": ("Commissions", "acquisition_marketing"),
+    "6040": ("Bonuses & Incentives", "acquisition_marketing"),
+    "6900": ("Overhead Allocation", "overhead"),
+}
+OVERHEAD_ACCOUNT = "6900"
+ACQUISITION_ACCOUNTS = {a for a, (_, cat) in GL_ACCOUNTS.items() if cat == "acquisition_marketing"}
+
+# Per-channel GL routing: primary acquisition account, optional bonus account
+# (a slice of acquisition spend booked separately — exercises multi-account per
+# channel), and the invoice cadence. Invoices bill in arrears (posting on the
+# last day of their covered span — never before the spend occurred):
+#   weekly  — ~weekly invoices through the month (visible progression each snapshot)
+#   monthly — one month-end invoice (no in-month spend -> CPA estimate fallback
+#             early; the full month lands only in the post-close snapshot)
+CHANNEL_GL = {
+    "Web_Direct":          {"account": "6010", "bonus": None,   "cadence": "weekly"},
+    "Door_to_Door":        {"account": "6030", "bonus": "6040", "cadence": "weekly"},
+    "Telemarketing":       {"account": "6020", "bonus": "6040", "cadence": "weekly"},
+    "Inbound_Call_Center": {"account": "6020", "bonus": None,   "cadence": "weekly"},
+    "Direct_Mail":         {"account": "6010", "bonus": None,   "cadence": "monthly"},
+    "Online_Partner":      {"account": "6030", "bonus": None,   "cadence": "monthly"},
+}
+BONUS_FRACTION = 0.15   # share of a channel's acquisition spend booked as bonuses
 
 
 # ---------------------------------------------------------------------------
@@ -215,8 +259,12 @@ class Series:
     customer_size_tier: str        # residential / small_C&I / large_C&I
     customer_class: Optional[str]  # single_family / multi_family; None for C&I
 
-    # --- GL join key ---
-    cost_center: str               # 1:1 with the series; maps via gl_mapping
+    # --- GL routing ---
+    # Vendor(s) that bill this channel×geography unit. The (cost_center, account,
+    # vendor) combo resolves back to this unit via gl_mapping; >1 vendor models a
+    # multi-vendor channel (richer mix). cost_center/account/cadence derive from
+    # the segment (CHANNEL_GL), so they are NOT stored per series.
+    vendors: tuple                 # e.g. ("SearchAds Media",) or two for a mix
 
     # --- baseline daily operations ---
     base_volume_in: float          # daily submissions entering the funnel
@@ -240,6 +288,21 @@ class Series:
     # --- slow trailing-CPA drift across history (unit-economics compression) ---
     # Fractional rise in cost-per-conversion from history_start to active period.
     cpa_history_drift: float = 0.0
+
+    # --- per-sub-segment economics overrides (resolved onto leaves at derive time) ---
+    # Optional. Keys may be a product_type string ("Term": 40.0) OR a sub-segment
+    # tuple (product_type, contract_term_months, customer_class) for finer control.
+    # Precedence: sub-segment > product_type > unit default. Empty => uniform per
+    # unit (today's behavior). See _resolve_override / _derive_leaf_series.
+    cogs_overrides: dict = field(default_factory=dict)
+    retention_overrides: dict = field(default_factory=dict)
+
+    # --- plan independent error (gen_reference) ---
+    # Optional. Makes the PLAN deviate from the noise-free actual baseline (a real
+    # plan is set independently and misses). Keys: "volume" and/or "cpa", as a
+    # fraction (e.g. {"volume": 0.08, "cpa": 0.04} = an over-budgeted plan).
+    # Empty => plan == baseline (today's clean behavior). Inherited onto leaves.
+    plan_bias: dict = field(default_factory=dict)
 
     def dims(self) -> dict:
         """The dimension columns this series stamps onto every row it produces.
@@ -272,54 +335,78 @@ class Series:
         """Plan LTV = plan margin per unit x expected retention periods."""
         return round(self.base_margin_per_unit * self.expected_retention_periods, 2)
 
+    # --- GL routing derived from the channel (segment) ---
+    @property
+    def cost_center(self) -> str:
+        return COST_CENTERS[self.segment][0]
 
-SERIES: list[Series] = [
-    # 1) HERO — Paid Search is the expensive channel: its CPA is already a high
-    #    share of LTV (unit economics compressing) AND it spikes hard in May.
-    #    Drives the CPA-spike HIGH alert and the CPA-vs-LTV compression alert.
+    @property
+    def cost_center_description(self) -> str:
+        return COST_CENTERS[self.segment][1]
+
+    @property
+    def gl_account(self) -> str:
+        """Primary acquisition account for this channel."""
+        return CHANNEL_GL[self.segment]["account"]
+
+    @property
+    def bonus_account(self) -> Optional[str]:
+        return CHANNEL_GL[self.segment]["bonus"]
+
+    @property
+    def cadence(self) -> str:
+        return CHANNEL_GL[self.segment]["cadence"]
+
+
+UNITS: list[Series] = [
+    # 1) Stable — Web_Direct (paid digital / online advertising). Flat, elastic
+    #    cost (you set a budget; the platform spends it), so it does NOT spike —
+    #    a well-behaved control. Two vendors (ad platforms) = the multi-vendor mix.
     Series(
         entity="ERCOT", region="North", service_territory="Oncor",
-        segment="Paid Search", product_type="Term", contract_term_months=24,
+        segment="Web_Direct", product_type="Term", contract_term_months=24,
         customer_size_tier="residential", customer_class="single_family",
-        cost_center="CC-ONCOR-PS",
+        vendors=("SearchAds Media", "BidStream Digital"),
         base_volume_in=55, base_conv_rate=0.86,
-        base_cpa=118.0, base_cogs_per_unit=40.0, base_margin_per_unit=37.5,
-        expected_retention_periods=4.0, base_price_per_unit=77.5,
-        has_forecast=True, cogs_comparison_mode="hybrid", role="hero",
-        cpa_history_drift=0.10,
-    ),
-    # 2) Stable control — well-behaved across the whole arc; proves no crying wolf.
-    Series(
-        entity="ERCOT", region="North", service_territory="Oncor",
-        segment="Door_to_Door", product_type="Month_to_Month", contract_term_months=None,
-        customer_size_tier="residential", customer_class="single_family",
-        cost_center="CC-ONCOR-DD",
-        base_volume_in=40, base_conv_rate=0.88,
-        base_cpa=95.0, base_cogs_per_unit=35.0, base_margin_per_unit=35.0,
-        expected_retention_periods=8.0, base_price_per_unit=70.0,
+        base_cpa=92.0, base_cogs_per_unit=38.0, base_margin_per_unit=36.0,
+        expected_retention_periods=5.0, base_price_per_unit=74.0,
         has_forecast=False, cogs_comparison_mode="linear_trend", role="stable",
     ),
-    # 3) Stable + forecast — carries a forecast row that diverges from plan to
-    #    exercise the plan-vs-forecast-gap alert.
+    # 2) Stable Door_to_Door in ERCOT South — well-behaved field sales; the second
+    #    Door_to_Door unit, so the channel keeps its vendor-disambiguation case
+    #    against the hero (same cost_center 5020 + account 6030, different vendor).
     Series(
         entity="ERCOT", region="South", service_territory="CenterPoint",
-        segment="Paid Search", product_type="Term", contract_term_months=12,
+        segment="Door_to_Door", product_type="Month_to_Month", contract_term_months=None,
         customer_size_tier="residential", customer_class="multi_family",
-        cost_center="CC-CENTERPOINT-PS",
+        vendors=("FieldForce Sales LLC",),
+        base_volume_in=60, base_conv_rate=0.88,
+        base_cpa=98.0, base_cogs_per_unit=34.0, base_margin_per_unit=34.0,
+        expected_retention_periods=8.0, base_price_per_unit=68.0,
+        has_forecast=False, cogs_comparison_mode="prior_year_same_period", role="stable",
+    ),
+    # 3) Stable + forecast — carries a forecast row diverging from plan to exercise
+    #    the plan-vs-forecast-gap alert.
+    Series(
+        entity="ERCOT", region="North", service_territory="Oncor",
+        segment="Telemarketing", product_type="Term", contract_term_months=12,
+        customer_size_tier="residential", customer_class="single_family",
+        vendors=("DialPro Teleservices",),
         base_volume_in=48, base_conv_rate=0.85,
         base_cpa=110.0, base_cogs_per_unit=40.0, base_margin_per_unit=36.0,
         expected_retention_periods=5.0, base_price_per_unit=76.0,
         has_forecast=True, cogs_comparison_mode="hybrid", role="stable",
     ),
-    # 4) FALLOUT — conversion rate degrades mid-period so fell_out / submissions
-    #    climbs over threshold. Drives the fallout-rate MEDIUM alert.
+    # 4) FALLOUT — Telemarketing (outbound calling) in ERCOT South. Conversion
+    #    rate degrades mid-period (agent turnover, lead quality slips, close rates
+    #    drop) so fell_out / submissions climbs over threshold (fallout MEDIUM).
     Series(
         entity="ERCOT", region="South", service_territory="CenterPoint",
-        segment="Door_to_Door", product_type="Month_to_Month", contract_term_months=None,
+        segment="Telemarketing", product_type="Month_to_Month", contract_term_months=None,
         customer_size_tier="residential", customer_class="multi_family",
-        cost_center="CC-CENTERPOINT-DD",
+        vendors=("SouthDial Telesales",),
         base_volume_in=60, base_conv_rate=0.88,
-        base_cpa=88.0, base_cogs_per_unit=34.0, base_margin_per_unit=34.0,
+        base_cpa=90.0, base_cogs_per_unit=34.0, base_margin_per_unit=34.0,
         expected_retention_periods=8.0, base_price_per_unit=68.0,
         has_forecast=False, cogs_comparison_mode="prior_year_same_period", role="fallout",
     ),
@@ -327,21 +414,22 @@ SERIES: list[Series] = [
     #    small-C&I series (no customer_class — class is residential-only).
     Series(
         entity="PJM", region="East", service_territory="PECO",
-        segment="Broker", product_type="Term", contract_term_months=36,
+        segment="Direct_Mail", product_type="Term", contract_term_months=36,
         customer_size_tier="small_C&I", customer_class=None,
-        cost_center="CC-PECO-BR",
+        vendors=("MailWorks Direct",),
         base_volume_in=35, base_conv_rate=0.86,
         base_cpa=130.0, base_cogs_per_unit=45.0, base_margin_per_unit=45.0,
         expected_retention_periods=6.0, base_price_per_unit=90.0,
         has_forecast=False, cogs_comparison_mode="prior_year_same_period", role="stable",
     ),
     # 6) Missing price — price_per_unit is null, so margin must fall back to the
-    #    plan margin input. Otherwise well-behaved.
+    #    plan margin input. Online_Partner pays at month-end, so it also has no
+    #    in-month spend early -> CPA estimate fallback in the open period.
     Series(
         entity="PJM", region="East", service_territory="PECO",
-        segment="Affiliate", product_type="Month_to_Month", contract_term_months=None,
+        segment="Online_Partner", product_type="Month_to_Month", contract_term_months=None,
         customer_size_tier="residential", customer_class="single_family",
-        cost_center="CC-PECO-AF",
+        vendors=("AffiliateHub Network",),
         base_volume_in=45, base_conv_rate=0.83,
         base_cpa=70.0, base_cogs_per_unit=32.0, base_margin_per_unit=28.0,
         expected_retention_periods=7.0, base_price_per_unit=None,
@@ -351,24 +439,23 @@ SERIES: list[Series] = [
     #    < 3 months of history and trailing-3-month CPA must fall back.
     Series(
         entity="ERCOT", region="West", service_territory="AEP_Texas",
-        segment="Affiliate", product_type="Term", contract_term_months=12,
+        segment="Direct_Mail", product_type="Term", contract_term_months=12,
         customer_size_tier="residential", customer_class="single_family",
-        cost_center="CC-AEPTX-AF",
+        vendors=("PrintReach Mail",),
         base_volume_in=30, base_conv_rate=0.84,
         base_cpa=85.0, base_cogs_per_unit=30.0, base_margin_per_unit=30.0,
         expected_retention_periods=5.0, base_price_per_unit=60.0,
         has_forecast=False, cogs_comparison_mode="plan_vs_actual", role="short_history",
         history_start=dt.date(2024, 3, 1),
     ),
-    # 8) Brand-new region — launches mid-active-period (May 15). Has plan rows but
-    #    no sales/conversions/GL before launch, so every metric falls back to
-    #    plan_input in the first two snapshots. Exercises the first-run path.
+    # 8) Brand-new region — launches mid-active-period (May 15). Plan rows but no
+    #    sales/conversions/GL before launch -> first-run plan_input fallback.
     #    Also a large-C&I series (no customer_class).
     Series(
         entity="ERCOT", region="West", service_territory="AEP_Texas",
-        segment="Broker", product_type="Term", contract_term_months=24,
+        segment="Telemarketing", product_type="Term", contract_term_months=24,
         customer_size_tier="large_C&I", customer_class=None,
-        cost_center="CC-AEPTX-BR",
+        vendors=("WestCall Telesales",),
         base_volume_in=25, base_conv_rate=0.82,
         base_cpa=125.0, base_cogs_per_unit=44.0, base_margin_per_unit=44.0,
         expected_retention_periods=6.0, base_price_per_unit=88.0,
@@ -379,27 +466,147 @@ SERIES: list[Series] = [
     #    Rounds out large_C&I and the BGE territory.
     Series(
         entity="PJM", region="East", service_territory="BGE",
-        segment="Broker", product_type="Term", contract_term_months=36,
+        segment="Inbound_Call_Center", product_type="Term", contract_term_months=36,
         customer_size_tier="large_C&I", customer_class=None,
-        cost_center="CC-BGE-BR",
+        vendors=("EastConnect Support",),
         base_volume_in=20, base_conv_rate=0.87,
         base_cpa=140.0, base_cogs_per_unit=46.0, base_margin_per_unit=48.0,
         expected_retention_periods=6.0, base_price_per_unit=94.0,
         has_forecast=False, cogs_comparison_mode="prior_year_same_period", role="stable",
     ),
-    # 10) Stable multi-family residential — rounds out multi_family on a digital
-    #     channel; well-behaved.
+    # 10) Stable multi-family residential — rounds out multi_family on the
+    #     online-partner channel; well-behaved.
     Series(
         entity="ERCOT", region="North", service_territory="Oncor",
-        segment="Affiliate", product_type="Month_to_Month", contract_term_months=None,
+        segment="Online_Partner", product_type="Month_to_Month", contract_term_months=None,
         customer_size_tier="residential", customer_class="multi_family",
-        cost_center="CC-ONCOR-AF",
+        vendors=("PartnerStream Online",),
         base_volume_in=50, base_conv_rate=0.85,
         base_cpa=72.0, base_cogs_per_unit=31.0, base_margin_per_unit=27.0,
         expected_retention_periods=7.0, base_price_per_unit=58.0,
         has_forecast=False, cogs_comparison_mode="linear_trend", role="stable",
     ),
+    # 11) Stable — a second Web_Direct unit in PJM (different market), so the hero
+    #     channel has a well-behaved sibling and PJM has a digital channel.
+    Series(
+        entity="PJM", region="East", service_territory="PECO",
+        segment="Web_Direct", product_type="Term", contract_term_months=12,
+        customer_size_tier="residential", customer_class="multi_family",
+        vendors=("MetroSearch Media",),
+        base_volume_in=44, base_conv_rate=0.86,
+        base_cpa=112.0, base_cogs_per_unit=40.0, base_margin_per_unit=36.0,
+        expected_retention_periods=5.0, base_price_per_unit=75.0,
+        has_forecast=False, cogs_comparison_mode="hybrid", role="stable",
+    ),
+    # 12) HERO — Door_to_Door (face-to-face field sales) in ERCOT North. The most
+    #     expensive channel and the one whose CPA realistically spikes: chasing Q2
+    #     targets piles on commissions + short-term incentives + field hours while
+    #     conversions stay flat, so cost-per-acquisition runs away. CPA is already
+    #     a high share of LTV (compression). The spike rides the weekly COMMISSION
+    #     ramp (visible across snapshots); an additive month-end INCENTIVE bonus
+    #     (account 6040) lands at close. Two field vendors (the multi-vendor mix);
+    #     shares cost_center 5020 + account 6030 with the South unit, so vendor
+    #     disambiguates region.
+    Series(
+        entity="ERCOT", region="North", service_territory="Oncor",
+        segment="Door_to_Door", product_type="Term", contract_term_months=24,
+        customer_size_tier="residential", customer_class="single_family",
+        vendors=("DoorPoint Field Mktg", "Summit Door Sales"),
+        base_volume_in=55, base_conv_rate=0.86,
+        base_cpa=120.0, base_cogs_per_unit=40.0, base_margin_per_unit=38.0,
+        expected_retention_periods=4.0, base_price_per_unit=78.0,
+        has_forecast=True, cogs_comparison_mode="hybrid", role="hero",
+        cpa_history_drift=0.10,
+    ),
 ]
+
+
+# ---------------------------------------------------------------------------
+# 5b. Product/customer mix — fan each channel×geography UNIT into leaf series
+# ---------------------------------------------------------------------------
+# A real channel×region acquires a MIX of products/terms/customer classes, not a
+# single flavor. Each UNIT above is the economic backbone (one set of economics +
+# total volume); its mix splits that volume across a few (product_type,
+# contract_term_months, customer_class, weight) combos. Economics are uniform
+# across a unit's leaves (the dims are labels today — they vary the *mix*, not the
+# per-unit numbers); only the volume is distributed by weight. customer_size_tier
+# stays unit-level (residential vs C&I are not blended under one channel×region).
+# Weights sum to 1 so leaf volumes sum back to the unit total.
+#
+# MixEntry = (product_type, contract_term_months, customer_class, weight).
+# Units default to a tier-appropriate mix; override a specific unit by key here.
+MIX_BY_UNIT = {
+    # Hero (Door_to_Door / ERCOT / North) — mostly long-term single-family.
+    ("Door_to_Door", "ERCOT", "North"): [
+        ("Term", 24, "single_family", 0.50),
+        ("Term", 12, "single_family", 0.30),
+        ("Month_to_Month", None, "multi_family", 0.20),
+    ],
+    # Digital skews month-to-month.
+    ("Web_Direct", "ERCOT", "North"): [
+        ("Month_to_Month", None, "single_family", 0.40),
+        ("Term", 12, "single_family", 0.35),
+        ("Month_to_Month", None, "multi_family", 0.25),
+    ],
+}
+
+
+def _default_mix(size_tier: str):
+    """Tier-appropriate fallback mix for units without an explicit MIX_BY_UNIT.
+    Residential fans product/term/class; C&I has no customer_class."""
+    if size_tier == "residential":
+        return [
+            ("Term", 12, "single_family", 0.45),
+            ("Term", 24, "single_family", 0.30),
+            ("Month_to_Month", None, "multi_family", 0.25),
+        ]
+    # small_C&I / large_C&I — commercial, no customer_class
+    return [
+        ("Term", 36, None, 0.55),
+        ("Term", 24, None, 0.45),
+    ]
+
+
+def _resolve_override(overrides: dict, product_type, subseg_key, default):
+    """Most-specific override wins: sub-segment tuple > product_type > unit default."""
+    if subseg_key in overrides:
+        return overrides[subseg_key]
+    if product_type in overrides:
+        return overrides[product_type]
+    return default
+
+
+def _derive_leaf_series(units: list[Series]) -> list[Series]:
+    """Expand each UNIT into leaf Series by its mix: dims set from the mix combo,
+    base_volume_in split by weight, and per-sub-segment economics (cogs, retention)
+    resolved from the unit's override maps. These leaves are what the record-level
+    generators (sales/conversions/reference) iterate; gen_gl works on UNITS (spend
+    stays at channel×geography grain). Resolving cogs/retention here means both the
+    config tables AND the plan feed (gen_reference's cogs_ref / ltv_ref) read the
+    same per-leaf values — one source, no drift."""
+    leaves = []
+    for u in units:
+        mix = MIX_BY_UNIT.get((u.segment, u.entity, u.region)) or _default_mix(u.customer_size_tier)
+        for product_type, term, customer_class, weight in mix:
+            subseg_key = (product_type, term, customer_class)
+            cogs = _resolve_override(u.cogs_overrides, product_type, subseg_key, u.base_cogs_per_unit)
+            retention = _resolve_override(u.retention_overrides, product_type, subseg_key,
+                                          u.expected_retention_periods)
+            leaves.append(replace(
+                u,
+                product_type=product_type,
+                contract_term_months=term,
+                customer_class=customer_class,
+                base_volume_in=round(u.base_volume_in * weight, 4),
+                base_cogs_per_unit=cogs,
+                expected_retention_periods=retention,
+                cogs_overrides={}, retention_overrides={},  # resolved — clear on leaves
+            ))
+    return leaves
+
+
+# The leaf roster the record-level generators iterate (the join backbone).
+SERIES: list[Series] = _derive_leaf_series(UNITS)
 
 
 # ---------------------------------------------------------------------------
@@ -423,28 +630,109 @@ def normalize_dim_tuple(values) -> tuple:
     return tuple(None if _is_missing(v) else str(v) for v in values)
 
 
-def series_by_cost_center(cost_center: str) -> Optional[Series]:
-    for s in SERIES:
-        if s.cost_center == cost_center:
-            return s
-    return None
+# The overhead vendor (single token non-acquisition stream).
+OVERHEAD_VENDOR = "Corporate Allocations"
+
+# Mapping column order (config/gl_mapping.csv + canonical rows).
+GL_MAPPING_COLUMNS = [
+    "cost_center", "cost_center_description", "gl_account", "gl_account_description",
+    "vendor", "segment", "entity", "region", "spend_category",
+]
+
+
+def series_acquisition_accounts(s: Series) -> list[str]:
+    """Acquisition account(s) a series posts to: primary + optional bonus."""
+    accounts = [s.gl_account]
+    if s.bonus_account:
+        accounts.append(s.bonus_account)
+    return accounts
 
 
 def canonical_gl_mapping_rows() -> list[dict]:
-    """The (cost_center, gl_account) -> entity/region/segment/spend_category rows
-    that config/gl_mapping.csv must contain. Each series posts to both an
-    acquisition and an overhead account."""
+    """The (cost_center, gl_account, vendor) -> (segment, entity, region,
+    spend_category) rows config/gl_mapping.csv must contain. One row per
+    acquisition account × vendor of each series (the ledger is dimension-free, so
+    this table is what ties each entry back to its gain channel + geography),
+    plus one token overhead row. Descriptions are carried for ease of use."""
+    rows = []
+    for s in UNITS:
+        for account in series_acquisition_accounts(s):
+            for vendor in s.vendors:
+                rows.append({
+                    "cost_center": s.cost_center,
+                    "cost_center_description": s.cost_center_description,
+                    "gl_account": account,
+                    "gl_account_description": GL_ACCOUNTS[account][0],
+                    "vendor": vendor,
+                    "segment": s.segment,
+                    "entity": s.entity,
+                    "region": s.region,
+                    "spend_category": "acquisition_marketing",
+                })
+    # Token overhead — not tied to a gain (blank channel/geography).
+    rows.append({
+        "cost_center": OVERHEAD_COST_CENTER[0],
+        "cost_center_description": OVERHEAD_COST_CENTER[1],
+        "gl_account": OVERHEAD_ACCOUNT,
+        "gl_account_description": GL_ACCOUNTS[OVERHEAD_ACCOUNT][0],
+        "vendor": OVERHEAD_VENDOR,
+        "segment": "",
+        "entity": "",
+        "region": "",
+        "spend_category": "overhead",
+    })
+    # De-dupe: a unit's vendors are distinct, but two series sharing a
+    # (cost_center, account, vendor) would collide — guard against silent dupes.
+    seen, unique = set(), []
+    for r in rows:
+        k = (r["cost_center"], r["gl_account"], r["vendor"])
+        if k in seen:
+            continue
+        seen.add(k)
+        unique.append(r)
+    return unique
+
+
+def canonical_gl_mapping_lookup() -> dict:
+    """(cost_center, gl_account, vendor) -> {segment, entity, region, spend_category}."""
+    return {
+        (r["cost_center"], r["gl_account"], r["vendor"]): r
+        for r in canonical_gl_mapping_rows()
+    }
+
+
+# cogs_config / retention_config are DERIVED from the roster (per sub-segment /
+# leaf) and validated against these builders — so they can never silently drift
+# from the economics the generator uses. cogs_config is the standing COGS input
+# (the plan feed's cogs_ref is the fallback); retention_config drives LTV.
+COGS_CONFIG_COLUMNS = DIMENSION_COLUMNS + ["cogs_per_unit", "cogs_comparison_mode", "effective_date"]
+RETENTION_CONFIG_COLUMNS = DIMENSION_COLUMNS + ["expected_retention_periods", "effective_date"]
+
+
+def canonical_cogs_config_rows() -> list[dict]:
+    """One row per leaf series: dimension tuple + resolved cogs_per_unit +
+    comparison mode + effective date (the unit's history start)."""
     rows = []
     for s in SERIES:
-        for account in (GL_ACCOUNT_ACQUISITION, GL_ACCOUNT_OVERHEAD):
-            rows.append({
-                "cost_center": s.cost_center,
-                "gl_account": account,
-                "entity": s.entity,
-                "region": s.region,
-                "segment": s.segment,
-                "spend_category": GL_SPEND_CATEGORY[account],
-            })
+        rows.append({
+            **s.dims(),
+            "cogs_per_unit": round(s.base_cogs_per_unit, 2),
+            "cogs_comparison_mode": s.cogs_comparison_mode,
+            "effective_date": s.effective_history_start.isoformat(),
+        })
+    return rows
+
+
+def canonical_retention_config_rows() -> list[dict]:
+    """One row per leaf series: dimension tuple + resolved expected_retention_periods
+    + effective date."""
+    rows = []
+    for s in SERIES:
+        rows.append({
+            **s.dims(),
+            "expected_retention_periods": round(s.expected_retention_periods, 2),
+            "effective_date": s.effective_history_start.isoformat(),
+        })
     return rows
 
 
@@ -505,7 +793,15 @@ class NarrativeConfig:
     # observed confirmed-snapshot variance lands a bit above this; the default keeps
     # the confirmed snapshot comfortably above the +20% HIGH line while letting the
     # May-15 "building" snapshot sit in approaching-HIGH (MEDIUM) territory.
-    cpa_spike_magnitude: float = 0.20
+    cpa_spike_magnitude: float = 0.18
+
+    # Hero month-end incentive surge. The hero's CPA spike rides the weekly
+    # COMMISSION ramp (visible across snapshots); on top of that, a Q2 incentive
+    # bonus (GL account 6040) is paid at each active-period month-end — ADDITIVE
+    # spend (not carved from commissions, which would flatten the visible spike).
+    # Expressed as a fraction of the month's hero commission spend. Lands only in
+    # the post-close snapshot, revealing extra damage alongside the restatement.
+    hero_incentive_surge_frac: float = 0.05
 
     # Fallout (fallout series) — DAILY fallout rate the ramp reaches by the
     # confirmed (day-22) snapshot. Cumulative month-to-date fallout lags the
@@ -522,20 +818,30 @@ class NarrativeConfig:
     # snapshot cadence so gains (and therefore the derived fallout) resolve within
     # the demo window — a too-long lag leaves every recent sale unresolved and
     # masks both the CPA climb and the fallout ramp.
-    conv_lag_mean_days: float = 3.0
+    conv_lag_mean_days: float = 2.0
     conv_lag_min_days: int = 1
-    conv_lag_max_days: int = 7
+    conv_lag_max_days: int = 4
 
     # Plan-vs-forecast gap (has_forecast series) — forecast CPA divergence + issue date
     forecast_divergence: float = 0.12
     forecast_issue_date: dt.date = dt.date(2024, 5, 10)
 
-    # Late / accrued GL invoice — prior-period document_date, current-period posting
+    # Late / accrued GL invoice — prior-period (April) document_date, current-period
+    # (May) posting. Booked against the hero channel; appears only from the May-20
+    # posting, exercising the accrued state and adding to the confirmed spike.
     late_invoice_enabled: bool = True
     late_invoice_amount: float = 9800.0
     late_invoice_doc_date: dt.date = dt.date(2024, 4, 27)
     late_invoice_posting_date: dt.date = dt.date(2024, 5, 20)
-    late_invoice_cost_center: str = "CC-ONCOR-PS"
+
+    # Post-close restatement — a May (in-period) document_date true-up that POSTS
+    # after close (June 6), against the hero channel. Lands only in the post-close
+    # final snapshot (June 8), restating closed-May spend/CPA upward -> exercises
+    # the `restated` completeness state and the period-restatement alert.
+    restatement_enabled: bool = True
+    restatement_amount: float = 4000.0
+    restatement_doc_date: dt.date = dt.date(2024, 5, 28)
+    restatement_posting_date: dt.date = dt.date(2024, 6, 6)
 
     # Global multiplicative noise level
     noise_sd: float = 0.04

@@ -1,9 +1,34 @@
-entity,segment,product_type,cogs_per_unit,cogs_comparison_mode,effective_date
-ERCOT North,Paid Search,Term,40.0,hybrid,2023-01-01
-ERCOT North,Door_to_Door,Month_to_Month,35.0,linear_trend,2023-01-01
-ERCOT Coast,Paid Search,Term,40.0,hybrid,2023-01-01
-ERCOT Coast,Door_to_Door,Month_to_Month,34.0,prior_year_same_period,2023-01-01
-PJM East,Broker,Term,45.0,prior_year_same_period,2023-01-01
-PJM East,Affiliate,Month_to_Month,32.0,linear_trend,2023-01-01
-ERCOT Coast,Affiliate,Term,30.0,plan_vs_actual,2024-03-01
-ERCOT West,Broker,Term,44.0,plan_vs_actual,2024-05-15
+entity,region,service_territory,segment,product_type,contract_term_months,customer_size_tier,customer_class,cogs_per_unit,cogs_comparison_mode,effective_date
+ERCOT,North,Oncor,Web_Direct,Month_to_Month,,residential,single_family,38.0,linear_trend,2023-05-01
+ERCOT,North,Oncor,Web_Direct,Term,12,residential,single_family,38.0,linear_trend,2023-05-01
+ERCOT,North,Oncor,Web_Direct,Month_to_Month,,residential,multi_family,38.0,linear_trend,2023-05-01
+ERCOT,South,CenterPoint,Door_to_Door,Term,12,residential,single_family,34.0,prior_year_same_period,2023-05-01
+ERCOT,South,CenterPoint,Door_to_Door,Term,24,residential,single_family,34.0,prior_year_same_period,2023-05-01
+ERCOT,South,CenterPoint,Door_to_Door,Month_to_Month,,residential,multi_family,34.0,prior_year_same_period,2023-05-01
+ERCOT,North,Oncor,Telemarketing,Term,12,residential,single_family,40.0,hybrid,2023-05-01
+ERCOT,North,Oncor,Telemarketing,Term,24,residential,single_family,40.0,hybrid,2023-05-01
+ERCOT,North,Oncor,Telemarketing,Month_to_Month,,residential,multi_family,40.0,hybrid,2023-05-01
+ERCOT,South,CenterPoint,Telemarketing,Term,12,residential,single_family,34.0,prior_year_same_period,2023-05-01
+ERCOT,South,CenterPoint,Telemarketing,Term,24,residential,single_family,34.0,prior_year_same_period,2023-05-01
+ERCOT,South,CenterPoint,Telemarketing,Month_to_Month,,residential,multi_family,34.0,prior_year_same_period,2023-05-01
+PJM,East,PECO,Direct_Mail,Term,36,small_C&I,,45.0,prior_year_same_period,2023-05-01
+PJM,East,PECO,Direct_Mail,Term,24,small_C&I,,45.0,prior_year_same_period,2023-05-01
+PJM,East,PECO,Online_Partner,Term,12,residential,single_family,32.0,linear_trend,2023-05-01
+PJM,East,PECO,Online_Partner,Term,24,residential,single_family,32.0,linear_trend,2023-05-01
+PJM,East,PECO,Online_Partner,Month_to_Month,,residential,multi_family,32.0,linear_trend,2023-05-01
+ERCOT,West,AEP_Texas,Direct_Mail,Term,12,residential,single_family,30.0,plan_vs_actual,2024-03-01
+ERCOT,West,AEP_Texas,Direct_Mail,Term,24,residential,single_family,30.0,plan_vs_actual,2024-03-01
+ERCOT,West,AEP_Texas,Direct_Mail,Month_to_Month,,residential,multi_family,30.0,plan_vs_actual,2024-03-01
+ERCOT,West,AEP_Texas,Telemarketing,Term,36,large_C&I,,44.0,plan_vs_actual,2024-05-15
+ERCOT,West,AEP_Texas,Telemarketing,Term,24,large_C&I,,44.0,plan_vs_actual,2024-05-15
+PJM,East,BGE,Inbound_Call_Center,Term,36,large_C&I,,46.0,prior_year_same_period,2023-05-01
+PJM,East,BGE,Inbound_Call_Center,Term,24,large_C&I,,46.0,prior_year_same_period,2023-05-01
+ERCOT,North,Oncor,Online_Partner,Term,12,residential,single_family,31.0,linear_trend,2023-05-01
+ERCOT,North,Oncor,Online_Partner,Term,24,residential,single_family,31.0,linear_trend,2023-05-01
+ERCOT,North,Oncor,Online_Partner,Month_to_Month,,residential,multi_family,31.0,linear_trend,2023-05-01
+PJM,East,PECO,Web_Direct,Term,12,residential,single_family,40.0,hybrid,2023-05-01
+PJM,East,PECO,Web_Direct,Term,24,residential,single_family,40.0,hybrid,2023-05-01
+PJM,East,PECO,Web_Direct,Month_to_Month,,residential,multi_family,40.0,hybrid,2023-05-01
+ERCOT,North,Oncor,Door_to_Door,Term,24,residential,single_family,40.0,hybrid,2023-05-01
+ERCOT,North,Oncor,Door_to_Door,Term,12,residential,single_family,40.0,hybrid,2023-05-01
+ERCOT,North,Oncor,Door_to_Door,Month_to_Month,,residential,multi_family,40.0,hybrid,2023-05-01

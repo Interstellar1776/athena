@@ -24,6 +24,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 # --- make the generators package importable, then import it ---
@@ -54,7 +55,24 @@ def _dim_keys(df) -> list:
             for t in df[shared.DIMENSION_COLUMNS].itertuples(index=False, name=None)]
 
 
-def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
+def _config_drift_problems(name, df, cols, canon_rows) -> list:
+    """Problems if a roster-derived config CSV (read with dtype=str) doesn't match
+    its canonical rows. None -> '' to mirror blank CSV cells / float formatting."""
+    missing_cols = [c for c in cols if c not in df.columns]
+    if missing_cols:
+        return [f"{name}: missing column(s) {missing_cols}"]
+    canon = {tuple("" if r[c] is None else str(r[c]) for c in cols) for r in canon_rows}
+    authored = {tuple(r) for r in df[cols].fillna("").astype(str).itertuples(index=False, name=None)}
+    probs = []
+    if canon - authored:
+        probs.append(f"{name}: rows missing/changed vs roster: {sorted(map(str, canon - authored))[:3]}")
+    if authored - canon:
+        probs.append(f"{name}: rows not in roster: {sorted(map(str, authored - canon))[:3]}")
+    return probs
+
+
+def validate(sales, conversions, gl, reference, notes, gl_mapping,
+             cogs_config, retention_config) -> None:
     problems: list[str] = []
 
     valid_keys = {s.key for s in shared.SERIES}
@@ -75,10 +93,11 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
             problems.append(f"operational_notes: unknown scope ({entity}, {region}, {segment})")
 
     # 3) gl_mapping.csv must equal the canonical mapping derived from shared.SERIES
-    #    (now keyed by cost_center, gl_account, entity, region, segment, spend_category).
-    cols = ["cost_center", "gl_account", "entity", "region", "segment", "spend_category"]
-    canon = {tuple(r[c] for c in cols) for r in shared.canonical_gl_mapping_rows()}
-    authored = {tuple(r) for r in gl_mapping[cols].itertuples(index=False, name=None)}
+    #    (keyed by cost_center, gl_account, vendor -> segment/entity/region/...).
+    cols = shared.GL_MAPPING_COLUMNS
+    gm = gl_mapping[cols].fillna("").astype(str)  # blank dims read back as NaN
+    canon = {tuple(str(r[c]) for c in cols) for r in shared.canonical_gl_mapping_rows()}
+    authored = {tuple(r) for r in gm.itertuples(index=False, name=None)}
     if canon != authored:
         missing, extra = canon - authored, authored - canon
         if missing:
@@ -86,20 +105,43 @@ def validate(sales, conversions, gl, reference, notes, gl_mapping) -> None:
         if extra:
             problems.append(f"gl_mapping.csv has rows not in shared.SERIES: {sorted(extra)[:5]}")
 
-    # 4) Every GL cost_center maps via gl_mapping to a real series.
-    mapped_centers = set(gl_mapping["cost_center"])
-    for cc in set(gl["cost_center"]):
-        if cc not in mapped_centers:
-            problems.append(f"gl_actuals: cost_center '{cc}' not in gl_mapping.csv")
-        elif shared.series_by_cost_center(cc) is None:
-            problems.append(f"gl_actuals: cost_center '{cc}' maps to no series in shared.SERIES")
+    # 3b) cogs_config / retention_config must equal the roster-derived canonical
+    #     tables — drift-guard so these inputs can never go stale again.
+    problems += _config_drift_problems("cogs_config.csv", cogs_config,
+                                       shared.COGS_CONFIG_COLUMNS, shared.canonical_cogs_config_rows())
+    problems += _config_drift_problems("retention_config.csv", retention_config,
+                                       shared.RETENTION_CONFIG_COLUMNS, shared.canonical_retention_config_rows())
+
+    # 4) Every ledger (cost_center, gl_account, vendor) combo must resolve via the
+    #    mapping (the dimension-free ledger can only tie back to a gain that way).
+    map_combos = set(gl_mapping[["cost_center", "gl_account", "vendor"]]
+                     .astype(str).itertuples(index=False, name=None))
+    gl_combos = set(gl[["cost_center", "gl_account", "vendor"]]
+                    .astype(str).itertuples(index=False, name=None))
+    unresolved = gl_combos - map_combos
+    if unresolved:
+        problems.append(f"gl_actuals: {len(unresolved)} (cost_center,gl_account,vendor) combo(s) "
+                        f"not in gl_mapping.csv: {sorted(unresolved)[:5]}")
 
     # 5) Every series has a plan row covering the active period (fallback target).
     plan = reference[reference["reference_type"] == "plan"]
-    plan_keys_active = set(_dim_keys(plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)]))
+    plan_active = plan[plan["date"].str.startswith(shared.ACTIVE_PERIOD)]
+    plan_keys_active = set(_dim_keys(plan_active))
     for s in shared.SERIES:
         if s.key not in plan_keys_active:
             problems.append(f"reference_data: no active-period plan row for series {s.key}")
+
+    # 5b) GL tie-back: every acquisition channel×geography the ledger maps to must
+    #     have an active-period plan, so every actual GL dollar has a plan CPA to
+    #     compare against (Σ plan cost_ref per unit reconciles to GL spend there).
+    gl_acq_units = {(r["entity"], r["region"], r["segment"])
+                    for r in shared.canonical_gl_mapping_rows()
+                    if r["spend_category"] == "acquisition_marketing"}
+    plan_units = set(plan_active[["entity", "region", "segment"]].itertuples(index=False, name=None))
+    uncovered = gl_acq_units - plan_units
+    if uncovered:
+        problems.append(f"reference_data: gl_mapping acquisition unit(s) with no active-period "
+                        f"plan: {sorted(uncovered)}")
 
     # 6) Sales/conversions integrity — gains reconcile back to submissions on
     #    customer_key. Fallout is the unmatched complement (not stored), so the
@@ -158,15 +200,23 @@ def write_table(df: pd.DataFrame, folder: Path, name: str, fmt: str) -> None:
 # ---------------------------------------------------------------------------
 # Inspection summary — the realism gate (Build Sequence step 1).
 # ---------------------------------------------------------------------------
-def _series_rows(df, s):
-    """Rows of df whose dimension tuple equals series s's key."""
-    return df[[k == s.key for k in _dim_keys(df)]]
+def _unit_rows(df, u):
+    """Rows of df belonging to a channel×geography unit (matched on
+    entity/region/segment) — a unit now spans several leaf series via its mix."""
+    return df[(df["entity"] == u.entity) & (df["region"] == u.region) & (df["segment"] == u.segment)]
 
 
 def print_summary(snapshots: dict, config) -> None:
-    hero = next(s for s in shared.SERIES if s.role == "hero")
-    fallout = next(s for s in shared.SERIES if s.role == "fallout")
-    new = next(s for s in shared.SERIES if s.role == "new")
+    hero = next(u for u in shared.UNITS if u.role == "hero")
+    fallout = next(u for u in shared.UNITS if u.role == "fallout")
+    new = next(u for u in shared.UNITS if u.role == "new")
+
+    # Ledger combos that resolve (via the mapping) to the hero unit's acquisition
+    # spend — the dimension-free ledger ties back to a channel only through this.
+    lookup = shared.canonical_gl_mapping_lookup()
+    hero_combos = {combo for combo, r in lookup.items()
+                   if r["spend_category"] == "acquisition_marketing"
+                   and (r["segment"], r["entity"], r["region"]) == (hero.segment, hero.entity, hero.region)}
 
     print("\n" + "=" * 78)
     print("SNAPSHOT SUMMARY — walk the arc (calm -> drift -> building -> confirmed HIGH -> final)")
@@ -177,15 +227,20 @@ def print_summary(snapshots: dict, config) -> None:
 
         # Hero active-period CPA = May acquisition spend (by document_date) / May
         # conversions present in the cut (by conversion_date — so the open period
-        # shows the gains that have actually landed).
-        g_acq_may = g[(g["gl_account"] == shared.GL_ACCOUNT_ACQUISITION)
-                      & (g["cost_center"] == hero.cost_center)
-                      & (g["document_date"].str.startswith(shared.ACTIVE_PERIOD))]
-        c_hero_may = _series_rows(c_df, hero)
+        # shows the gains that have actually landed). Spend is selected by the
+        # ledger combos that map to the hero unit's acquisition spend.
+        g_combo = zip(g["cost_center"].astype(str), g["gl_account"].astype(str), g["vendor"])
+        combo_mask = np.array([c in hero_combos for c in g_combo])
+        may_mask = g["document_date"].str.startswith(shared.ACTIVE_PERIOD).to_numpy()
+        g_acq_may = g[combo_mask & may_mask]
+        c_hero_may = _unit_rows(c_df, hero)
         c_hero_may = c_hero_may[c_hero_may["conversion_date"].str.startswith(shared.ACTIVE_PERIOD)]
         conv = len(c_hero_may)
-        hero_cpa = (g_acq_may["amount"].sum() / conv) if conv else float("nan")
-        hero_var = (hero_cpa / hero.base_cpa - 1.0) * 100 if conv else float("nan")
+        hero_spend = g_acq_may["amount"].sum()
+        # No May acquisition spend posted yet (monthly/early) -> CPA would fall back
+        # to an estimate; show that rather than a misleading 0.
+        hero_cpa = (hero_spend / conv) if (conv and hero_spend > 0) else float("nan")
+        hero_var = (hero_cpa / hero.base_cpa - 1.0) * 100 if hero_cpa == hero_cpa else float("nan")
 
         # Fallout (trailing matured window), derived by anti-join. We look at the
         # fallout series' submissions in the 7 days ending at the maturity cutoff
@@ -194,7 +249,7 @@ def print_summary(snapshots: dict, config) -> None:
         # cumulative MTD) reflects the *current* fallout rate, so the ramp shows.
         cutoff = dt.date.fromisoformat(snap_date) - dt.timedelta(days=config.conv_lag_max_days)
         window_start = (cutoff - dt.timedelta(days=7)).isoformat()
-        s_fo = _series_rows(s_df, fallout)
+        s_fo = _unit_rows(s_df, fallout)
         s_fo = s_fo[(s_fo["sale_date"] > window_start) & (s_fo["sale_date"] <= cutoff.isoformat())]
         fo_total = len(s_fo)
         matched = s_fo["customer_key"].isin(set(c_df["customer_key"])).sum()
@@ -203,7 +258,7 @@ def print_summary(snapshots: dict, config) -> None:
         # Late/accrued entries present (document month precedes posting month).
         late = g[g.apply(lambda x: x["document_date"][:7] < x["posting_date"][:7], axis=1)]
         n_forecast = int((r["reference_type"] == "forecast").sum())
-        new_sales = len(_series_rows(s_df, new))
+        new_sales = len(_unit_rows(s_df, new))
 
         print(f"\n[{snap_date}]  rows: sales={len(s_df)} conv={len(c_df)} gl={len(g)} "
               f"ref={len(r)} notes={len(n)}")
@@ -282,9 +337,13 @@ def main(argv=None) -> int:
     notes = gen_notes.generate(config)
 
     # --- load static config + validate (halt loudly on any problem) ---
-    gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv", dtype={"gl_account": str})
+    gl_mapping = pd.read_csv(CONFIG_DIR / "gl_mapping.csv",
+                             dtype={"cost_center": str, "gl_account": str})
+    cogs_config = pd.read_csv(CONFIG_DIR / "cogs_config.csv", dtype=str)
+    retention_config = pd.read_csv(CONFIG_DIR / "retention_config.csv", dtype=str)
     try:
-        validate(sales, conversions, gl, reference, notes, gl_mapping)
+        validate(sales, conversions, gl, reference, notes, gl_mapping,
+                 cogs_config, retention_config)
     except PipelineHalt as e:
         print(f"\nPIPELINE HALTED\n{e}", file=sys.stderr)
         return 1
