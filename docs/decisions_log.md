@@ -758,6 +758,42 @@ vs partial-month actuals → an overstated −76%); pro-rating the launch-month 
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — module 4: findings_builder)
+
+### Non-LOW become §14 findings; the assessment table is the browse layer
+**Chose:** `findings_builder` turns only the **non-LOW** (HIGH/MEDIUM/INFO) assessments into §14
+structured findings (the feed); `compute_findings` returns `{"findings", "assessments"}` so the full
+scored table (incl. every LOW/on-track row) rides alongside as the drill-down/browse source.
+**Rejected:** A heavy §14 finding per metric incl. LOW (hundreds of objects the feed/narrative would
+just re-filter).
+**Why:** Keeps the feed digestible while preserving "see everything" — it lives in the table, not as
+findings. The §14 finding is the contract the LLM/report consume; flooding it with on-track rows would
+bury the signal and bloat the narrative inputs.
+
+### One finding per (alert_type, unit, period); leaves nested for drill-down
+**Chose:** Roll leaf-grain alerts up to the unit — max severity, the **worst leaf** as the headline —
+nesting every leaf under `supporting_metrics.leaves`. The COGS anomaly is **one** `cogs_spike` finding
+(3 leaves) + **one** `margin_compression` finding (3 leaves), not six rows.
+**Rejected:** One finding per leaf (repeats one event; noisy feed).
+**Why:** Implements the "calc at leaf, roll up the alert, drill-down to leaves" decision and §14's
+"rolls up to unit for display, native grain retained for drill-down." Worst-leaf headline is
+conservative (surfaces the worst); volume-weighting is an easy alternative if a unit-representative is
+preferred later.
+
+### Feed ranked severity → magnitude → recency; deterministic positional ids
+**Chose:** Order findings by severity (HIGH>MEDIUM>INFO) → |magnitude| → current-period-first → period
+→ unit/alert tie-break; assign `finding_id` `F-001…` in ranked order (deterministic across runs).
+**Why:** Matches the owner's ranking choice and makes the feed reproducible.
+**Status (open):** (a) under flag-don't-suppress, a **first-run** volume_miss (Telemarketing West,
+−76%, low-confidence) ranks high by magnitude and can crowd above genuine HIGHs — a **confidence-aware
+tie-break** (real/high-confidence before estimated/low within a severity) would help, deferred since the
+owner specified severity→magnitude→recency. (b) `finding_id` is positional (re-rank renumbers); a stable
+hash id is a later option if findings must be tracked across runs.
+**Verified:** the feed leads with the demo HIGHs; `estimated` flips **True→False across close** (CPA
+spikes/fallout: estimated warning at May-22 → confirmed real at June-8) — the headline honesty beat.
+
+---
+
 ## Template for new entries
 
 ```
