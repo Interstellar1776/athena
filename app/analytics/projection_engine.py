@@ -64,7 +64,13 @@ CALENDAR, BUSINESS = "calendar_days", "business_days"
 # projection_method labels
 M_REG_21D, M_REG_ALL, M_LINEAR = "regression_21d", "regression_all", "linear_fallback"
 REGRESSION_WINDOW = 21          # trailing days for the weighted regression
-CONF_LOW, CONF_MED, CONF_HIGH = "low", "medium", "high"
+CONF_LOW, CONF_MED, CONF_HIGH, CONF_NONE = "low", "medium", "high", "no_data"
+
+# Proactive fallout: a sale is "resolved" once it is older than the conversion-lag SLA (its
+# outcome — converted or fell out — is final). Below this many resolved sales the sub-cohort
+# estimate is too thin, so we fall back to the plain (pending-inflated) rate, labeled no_data.
+CONV_LAG_SLA_DAYS = 7
+MIN_RESOLVED_SALES = 20
 
 # The two volume metrics projected, each (feed, date column, plan-target column).
 VOLUME_SPECS = {
@@ -225,6 +231,59 @@ def _empty_projection_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=cols)
 
 
+FALLOUT_PROJ_COLUMNS = (DIMS + ["period", "fallout_rate", "fallout_method", "resolved_fraction",
+                                "confidence", "total_sales", "resolved_sales"])
+
+
+def project_fallout(feeds: dict[str, pd.DataFrame], metrics: dict[str, pd.DataFrame], *,
+                    snapshot_date: dt.date, conv_lag_sla: int = CONV_LAG_SLA_DAYS
+                    ) -> dict[str, pd.DataFrame]:
+    """Proactive fallout for the current period, lag-corrected (leaf grain).
+
+    Naive ``unmatched / submissions`` over-states fallout mid-period: a sale from the last few
+    days simply hasn't had time to convert. So we estimate the period's fallout from the
+    **resolved sub-cohort** — sales older than the conversion-lag SLA, whose outcome is final —
+    which is lag-free and available from early in the period. When too few sales have resolved
+    we fall back to the plain rate, labeled ``plain_no_data`` / ``no_data`` confidence; the
+    confidence otherwise scales with the resolved fraction. This is what makes fallout proactive
+    (a warning before close) instead of a purely lagging signal."""
+    econ = metrics["economics"]
+    proj_periods = econ.loc[econ["is_projectable"], "period"].unique()
+    if len(proj_periods) == 0:
+        return {"fallout_projection": pd.DataFrame(columns=FALLOUT_PROJ_COLUMNS)}
+    current_period = str(proj_periods[0])
+
+    sales = feeds["sales"]
+    converted_keys = set(feeds["conversions"]["customer_key"])
+    cur = sales[sales["sale_date"].dt.to_period("M").astype(str) == current_period].copy()
+    cutoff = pd.Timestamp(snapshot_date - dt.timedelta(days=conv_lag_sla))
+    cur["_resolved"] = cur["sale_date"] <= cutoff                # outcome is final
+    cur["_matched"] = cur["customer_key"].isin(converted_keys)
+    cur["_resolved_matched"] = cur["_resolved"] & cur["_matched"]
+
+    g = (cur.groupby(DIMS, observed=True)
+         .agg(total_sales=("customer_key", "size"),
+              resolved_sales=("_resolved", "sum"),
+              resolved_matched=("_resolved_matched", "sum"),
+              matched_all=("_matched", "sum")).reset_index())
+
+    resolved_rate = 1 - g["resolved_matched"] / g["resolved_sales"].replace(0, np.nan)
+    plain_rate = 1 - g["matched_all"] / g["total_sales"].replace(0, np.nan)
+    enough = g["resolved_sales"] >= MIN_RESOLVED_SALES
+
+    g["fallout_rate"] = resolved_rate.where(enough, plain_rate)
+    g["fallout_method"] = np.where(enough, "resolved_subcohort", "plain_no_data")
+    g["resolved_fraction"] = (g["resolved_sales"] / g["total_sales"].replace(0, np.nan)).round(3)
+    frac = g["resolved_fraction"].fillna(0.0)
+    g["confidence"] = np.where(~enough, CONF_NONE,
+                       np.where(frac >= 2 / 3, CONF_HIGH,
+                       np.where(frac >= 1 / 3, CONF_MED, CONF_LOW)))
+    g["period"] = current_period
+    logger.info("fallout projection: %d leaf row(s) for %s (%d resolved-subcohort, %d no_data)",
+                len(g), current_period, int(enough.sum()), int((~enough).sum()))
+    return {"fallout_projection": g[FALLOUT_PROJ_COLUMNS]}
+
+
 # ===========================================================================
 # 4. Thin wrapper — load → merge → gl → metrics → project
 # ===========================================================================
@@ -246,7 +305,9 @@ def compute_projections(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict[str, 
     gl_states = process_gl(merged["gl_acquisition"], config_path)
     metrics = calculate_metrics(merged, gl_states, data["cogs_config"], data["retention_config"],
                                 snapshot_date=snapshot_date, period_close_day=period_close_day)
-    return project_volume(data, merged, metrics, snapshot_date=snapshot_date, pro_rate=pro_rate)
+    vol = project_volume(data, merged, metrics, snapshot_date=snapshot_date, pro_rate=pro_rate)
+    fal = project_fallout(data, metrics, snapshot_date=snapshot_date)
+    return {**vol, **fal}
 
 
 # ===========================================================================

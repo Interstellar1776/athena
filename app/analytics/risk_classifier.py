@@ -174,10 +174,11 @@ def _cpa_trend(cpa: pd.DataFrame, thr: dict, periods: list[str]) -> pd.DataFrame
 def _volume_miss(projection: pd.DataFrame, thr: dict, established: set) -> pd.DataFrame:
     """Projected period-end converted vs plan (leaf, current period). Lower is bad. Two lines.
 
-    A **first-run** leaf (launched this period — no prior history) is NOT banded: its plan is a
-    full month but its actuals only cover the post-launch days, so the 'miss' is a spurious
-    comparison, not a real shortfall (§9 — first run is labeled, never a hard alert). Such rows
-    stay LOW with a ``first_run`` note; the narrative can flag 'newly launched'."""
+    A **first-run** leaf (launched this period — no prior history) has a full-month plan but only
+    post-launch actuals, so the projected 'miss' overstates the real shortfall (a structurally
+    imperfect comparison — pro-rating the launch-month plan is a deferred fix). Per the flag-don't-
+    suppress policy it is still flagged at its magnitude, but tagged ``first_run`` + low confidence
+    so a reviewer sees it for what it is rather than having it silently dropped."""
     vp = projection
     if vp.empty:
         return _standardize(_empty_with_dims("leaf"), grain="leaf")
@@ -189,7 +190,7 @@ def _volume_miss(projection: pd.DataFrame, thr: dict, established: set) -> pd.Da
                             higher_is_bad=False,
                             med=thr["volume_miss"]["medium"], high=thr["volume_miss"]["high"])
         df = df.join(band)
-        df.loc[is_first_run.values, "risk_level"] = LOW          # don't cry wolf on a launch
+        df.loc[is_first_run.values, "confidence"] = "low"        # flagged, but low-confidence
         df["alert_type"] = f"volume_miss_{line}"
         df["metric"] = "volume_converted"
         df["actual"] = df[f"converted_proj_{line}"]
@@ -207,39 +208,55 @@ def _volume_miss(projection: pd.DataFrame, thr: dict, established: set) -> pd.Da
     return pd.concat(out, ignore_index=True)
 
 
-def _fallout(fallout: pd.DataFrame, thr: dict, periods: list[str]) -> pd.DataFrame:
-    """Fallout rate vs the channel's OWN trailing baseline (leaf). Higher is bad.
+def _fallout(fallout: pd.DataFrame, fallout_proj: pd.DataFrame, thr: dict, periods: list[str],
+             current_period: str) -> pd.DataFrame:
+    """Fallout vs the channel's OWN trailing-3-month baseline (leaf). Higher is bad.
 
-    Absolute fallout is a poor signal here (every channel runs above its optimistic plan), and a
-    pending current cohort is inflated by not-yet-landed conversions. The real signal is
-    *degradation vs the leaf's own recent norm* — the engineered fallout channel rises ~50% above
-    its trailing average while calm channels barely move. So we band the **relative increase over
-    a trailing-3-month (prior) baseline**, and only for RESOLVED cohorts with history; pending /
-    first-run rows still carry a level (LOW) + the flag."""
+    Absolute fallout is a poor signal here (every channel runs above its optimistic plan); the real
+    signal is *degradation vs the leaf's own recent norm*. The current period is made **proactive**
+    by using ``projection_engine``'s resolved-sub-cohort rate (lag-corrected) in place of the raw
+    pending-inflated value — so the degradation flags *before close* (e.g. Telemarketing ~+50% at
+    May-22, escalating to HIGH once the cohort fully resolves). Prior months use their final rate.
+    Everything with a baseline is flagged (no suppression — the confidence label carries the
+    uncertainty); a leaf with no baseline can't be compared, so it stays LOW."""
     fo = fallout.sort_values(DIMS + ["period"]).copy()
     fo["_baseline"] = (fo.groupby(DIMS, observed=True)["fallout_rate"]
                        .transform(lambda s: s.rolling(3, min_periods=1).mean().shift(1)))
-    df = fo[fo["period"].isin(periods)].copy().reset_index(drop=True)
+    df = fo[fo["period"].isin(periods)].copy()
+
+    # Override the current period's rate with the proactive (resolved-sub-cohort) projection.
+    if fallout_proj is not None and len(fallout_proj):
+        proj = fallout_proj[DIMS + ["fallout_rate", "fallout_method", "confidence"]].rename(
+            columns={"fallout_rate": "_p_rate", "fallout_method": "_p_method", "confidence": "_p_conf"})
+        df = df.merge(proj, on=DIMS, how="left")
+    else:
+        df = df.assign(_p_rate=np.nan, _p_method=None, _p_conf=None)
+    is_cur = (df["period"] == current_period) & df["_p_rate"].notna()
+    df["_rate"] = np.where(is_cur, df["_p_rate"], df["fallout_rate"])
+    df["_method"] = np.where(is_cur, df["_p_method"], "real")
+    df["_conf"] = np.where(is_cur, df["_p_conf"], "high")
+    df = df.reset_index(drop=True)
+
     med, high = thr["fallout_rate"]["medium"], thr["fallout_rate"]["high"]
-    rel = (df["fallout_rate"] - df["_baseline"]) / df["_baseline"].replace(0, np.nan)
-    # Only RESOLVED cohorts with a trailing baseline are banded (pending = lagging/unresolved §8).
-    bandable = (~df["pending_resolution"]) & df["_baseline"].notna()
+    rel = (df["_rate"] - df["_baseline"]) / df["_baseline"].replace(0, np.nan)
+    bandable = df["_baseline"].notna()
     df["risk_level"] = [(_level(r, med, high) if ok else LOW)
                         for r, ok in zip(rel.fillna(0), bandable)]
     df["alert_type"] = "fallout_rate"
     df["metric"] = "fallout_rate"
-    df["actual"] = df["fallout_rate"]
-    df["actual_method"] = "real"
+    df["actual"] = df["_rate"].round(4)
+    df["actual_method"] = df["_method"]
     df["reference_value"] = df["_baseline"].round(4)
     df["reference_type"] = "trailing_baseline"
     df["variance_pct"] = (rel * 100).round(2)
     df["variance_direction"] = np.where((rel > 0) & bandable, UNFAVORABLE,
                                 np.where(rel < 0, FAVORABLE, NEUTRAL))
-    df["estimated"] = df["pending_resolution"]
-    df["confidence"] = np.where(df["pending_resolution"], "low", "high")
-    df["supporting"] = df.apply(lambda r: {"submissions": r["submissions"], "matched": r["matched"],
-                                           "unmatched": r["unmatched"],
-                                           "pending": bool(r["pending_resolution"])}, axis=1)
+    df["estimated"] = df["_method"] != "real"
+    df["confidence"] = df["_conf"]
+    df["supporting"] = df.apply(lambda r: {"submissions": r["submissions"], "unmatched": r["unmatched"],
+                                           "trailing_baseline": round(r["_baseline"], 4)
+                                           if pd.notna(r["_baseline"]) else None,
+                                           "method": r["_method"]}, axis=1)
     return _standardize(df, grain="leaf")
 
 
@@ -425,7 +442,7 @@ def classify(metrics: dict[str, pd.DataFrame], projection: dict[str, pd.DataFram
         _cpa_spike(cpa, thresholds, periods),
         _cpa_trend(cpa, thresholds, periods),
         _volume_miss(vp, thresholds, established),
-        _fallout(fo, thresholds, periods),
+        _fallout(fo, projection.get("fallout_projection"), thresholds, periods, current_period),
         _cpa_ltv(cpa, econ, thresholds, cfg, periods),
         _margin(econ, thresholds, periods),
         _cogs_spike(econ, thresholds, periods),
@@ -444,7 +461,7 @@ def compute_assessments(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict[str, 
     from app.analytics.data_merger import merge_frames
     from app.analytics.gl_processor import process_gl
     from app.analytics.metrics_calculator import calculate_metrics
-    from app.analytics.projection_engine import project_volume
+    from app.analytics.projection_engine import project_fallout, project_volume
 
     cfg = yaml.safe_load(Path(config_path).read_text())
     snapshot_date = dt.date.fromisoformat(str(cfg["snapshot_date"]))
@@ -454,8 +471,9 @@ def compute_assessments(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict[str, 
     gl_states = process_gl(merged["gl_acquisition"], config_path)
     metrics = calculate_metrics(merged, gl_states, data["cogs_config"], data["retention_config"],
                                 snapshot_date=snapshot_date, period_close_day=period_close_day)
-    projection = project_volume(data, merged, metrics, snapshot_date=snapshot_date,
-                                pro_rate=str(cfg.get("pro_rate_default", "calendar_days")))
+    projection = {**project_volume(data, merged, metrics, snapshot_date=snapshot_date,
+                                   pro_rate=str(cfg.get("pro_rate_default", "calendar_days"))),
+                  **project_fallout(data, metrics, snapshot_date=snapshot_date)}
     return classify(metrics, projection, gl_states, data["reference_data"],
                     snapshot_date=snapshot_date, thresholds=cfg["thresholds"],
                     cpa_ltv_warning_threshold=float(cfg["cpa_ltv_warning_threshold"]))

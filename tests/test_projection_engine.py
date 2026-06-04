@@ -131,3 +131,32 @@ def test_no_infinities(projection):
     num = projection.select_dtypes(include="number")
     assert not np.isinf(num.to_numpy()).any()
     assert not num.isna().to_numpy().any()
+
+
+# ---------------------------------------------------------------------------
+# Proactive fallout (resolved sub-cohort)
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def fallout_projection():
+    data = load_data()
+    metrics = calculate_metrics(merge_frames(data), process_gl(merge_frames(data)["gl_acquisition"]),
+                                data["cogs_config"], data["retention_config"],
+                                snapshot_date=SNAPSHOT_DATE, period_close_day=8)
+    return pe.project_fallout(data, metrics, snapshot_date=SNAPSHOT_DATE)["fallout_projection"]
+
+
+def test_fallout_projection_is_current_period_leaf_grain(fallout_projection):
+    fp = fallout_projection
+    assert (fp["period"] == SNAP_PERIOD).all()
+    assert not fp.duplicated(DIMS).any()
+    assert ((fp["fallout_rate"] >= 0) & (fp["fallout_rate"] <= 1)).all()
+
+
+def test_fallout_method_and_confidence_are_consistent(fallout_projection):
+    fp = fallout_projection
+    # Thin resolved sub-cohorts fall back to the plain rate, labeled no_data.
+    no_data = fp[fp["fallout_method"] == "plain_no_data"]
+    assert (no_data["confidence"] == "no_data").all()
+    subcohort = fp[fp["fallout_method"] == "resolved_subcohort"]
+    assert subcohort["confidence"].isin({"low", "medium", "high"}).all()
+    assert (subcohort["resolved_sales"] >= pe.MIN_RESOLVED_SALES).all()

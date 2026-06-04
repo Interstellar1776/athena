@@ -724,6 +724,40 @@ prior-period baseline is a noted refinement.
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — proactive fallout + flag-don't-suppress)
+
+### Fallout is projected proactively from the resolved sub-cohort (lag-corrected)
+**Chose:** Make the current period's fallout **proactive** — `projection_engine.project_fallout`
+estimates it from the **resolved sub-cohort** (sales older than the conversion-lag SLA, whose outcome
+is final); `risk_classifier` bands that vs the channel's trailing-3-month baseline. Confidence scales
+with the resolved fraction; below `MIN_RESOLVED_SALES` it falls back to the plain rate, labeled
+`plain_no_data` / `no_data`.
+**Rejected:** (a) Banding **only resolved cohorts** (the prior build) — makes fallout purely *lagging*
+(fires at June-8), which "can't be proactive" (owner). (b) The owner's first instinct, **regress the
+numerator and denominator** to period-end and divide — the **numerator (`unmatched`) is lag-biased**: a
+sale from the last few days simply hasn't had time to convert, so cumulative `unmatched` is inflated at
+the very edge a regression leans on → it would *over-project* fallout (cry-wolf, the opposite failure).
+**Why:** The resolved sub-cohort is lag-free and available early. Verified: at **May-22** Telemarightl
+flags **+50–106% over its own baseline (MEDIUM/HIGH), with high confidence, weeks before close**, then
+escalates as the cohort resolves — exactly the proactive signal. This is the right answer to the owner's
+"it can't be proactive if it can't use a trailing average — get this one right."
+**Status (open):** at *leaf* grain the resolved sub-cohort is small and noisier (a calm leaf can show a
+spurious +60%); confidence is keyed to the resolved *fraction*, not the sample *count* — folding sample
+size into confidence is a noted refinement.
+
+### Flag-don't-suppress (with a confidence label) replaces silent LOW-suppression
+**Chose:** Per the owner — *flag everything at its magnitude with an explicit confidence/`estimated`
+label, and refine the structural fixes later*, rather than silently dropping uncertain signals to LOW.
+So: pending/projected fallout is **flagged** (carrying its confidence), and a first-run leaf's volume
+miss is **flagged with `first_run` + low confidence** instead of suppressed.
+**Rejected:** Suppressing first-run volume_miss and pending fallout to LOW (the prior build).
+**Why:** The owner would rather *see every potential miss and review it* than have Athena hide one. This
+stays honest about "never cry wolf" by carrying the uncertainty in the **label**, not by hiding the row.
+**Status (open):** the first-run volume_miss comparison is still structurally imperfect (full-month plan
+vs partial-month actuals → an overstated −76%); pro-rating the launch-month plan is the deferred fix.
+
+---
+
 ## Template for new entries
 
 ```

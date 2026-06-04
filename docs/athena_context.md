@@ -151,6 +151,10 @@ The signal Athena always answers: *"If current trends continue, where will we en
     days of the **cumulative** daily series, extended to period end. Regressing the cumulative (not daily
     increments) keeps the slope robust to bursty days. Falls back to all available data when the period is
     younger than 21 days, and to the linear line when the fit is degenerate.
+- **Fallout — projected proactively** via the **resolved sub-cohort**: a sale older than the conversion-lag
+  SLA has a final outcome, so the fallout rate among resolved sales estimates where the period lands — without
+  the lag bias that inflates a naive `unmatched ÷ submissions`. Available from early in the period; confidence
+  scales with the resolved fraction; too thin → the plain rate, labeled `no_data`. (Lives in `projection_engine`.)
 - **CPA — not projected.** CPA is ledger-driven (invoice-paced, not a daily signal). Instead its finding
   pairs the **current run rate** (spend-to-date CPA) with a **month-end estimate drawn from prior months**
   (trailing CPA), or a **no-history** state — *not* a forward projection of the in-month spike. The alert
@@ -353,7 +357,9 @@ If price per unit is unavailable, fall back to plan margin input. Always labeled
 
 *Compression basis revised to **trailing-3-month** CPA (responsive — fires on a single-month spike; T12M is dominated by a year of history and would miss it); the hard inversion stays on T12M. Resolves the open question; supersedes the prior "T12M compression" wording. Rationale in `decisions_log.md`.*
 
-*Fallout rate fires on **degradation vs the channel's own trailing-3-month baseline** (not an absolute rate — every channel runs above its optimistic plan), and **only on resolved cohorts** (a pending current-month cohort is inflated by not-yet-landed conversions — a lagging signal, §8, scored LOW until it settles). Volume miss is **suppressed for first-run leaves** (a mid-period launch has a full-month plan but partial actuals — §9, labeled not alarmed).*
+*Fallout rate fires on **degradation vs the channel's own trailing-3-month baseline** (not an absolute rate — every channel runs above its optimistic plan). The current period is **proactive**: it uses `projection_engine`'s **resolved-sub-cohort** fallout rate (computed from sales old enough that their outcome is final, so it is lag-corrected) instead of the raw pending-inflated count — the engineered fallout channel flags ~MEDIUM weeks before close and escalates to HIGH once the cohort fully resolves. Confidence scales with the resolved fraction; too thin → plain rate, labeled `no_data`.*
+
+*Flag-don't-suppress: uncertain signals are flagged at their magnitude with an explicit confidence label rather than silently dropped — e.g. a first-run leaf's volume miss (full-month plan vs partial-month actuals) is flagged with `first_run` + low confidence (pro-rating the launch-month plan is a deferred refinement).*
 
 **Cost:** COGS spike (vs baseline by %, HIGH) · COGS trend (rising N periods, MEDIUM) · Late invoice (posting after close, INFO) · Period restatement (prior CPA changed by % from late invoice, MEDIUM)
 

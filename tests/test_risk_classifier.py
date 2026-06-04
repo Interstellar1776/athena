@@ -94,19 +94,26 @@ def test_cpa_ltv_inversion_is_dormant_not_fabricated(assessments):
 # ---------------------------------------------------------------------------
 # No cry-wolf — pending fallout + first-run volume are not hard alerts
 # ---------------------------------------------------------------------------
-def test_current_pending_fallout_is_not_banded(assessments):
-    """The current month's fallout is pending (unresolved) at May-22 → LOW + estimated."""
+def test_current_fallout_is_proactive_and_estimated(assessments):
+    """The current month's fallout is now PROACTIVE (resolved-sub-cohort projection): it can fire
+    before close, is marked estimated, and uses the projection method — and the engineered fallout
+    channel (Telemarketing) is flagged at May-22, weeks before its cohort fully resolves."""
     cur = assessments[(assessments["alert_type"] == "fallout_rate") &
                       (assessments["period"] == SNAP_PERIOD)]
-    assert (cur["risk_level"] == rc.LOW).all()
-    assert cur["estimated"].all()
+    banded = cur[cur["actual_method"] == "resolved_subcohort"]
+    assert banded["estimated"].all()                            # a projection is estimated
+    tele = cur[(cur["segment"] == "Telemarketing") & (cur["risk_level"].isin([rc.HIGH, rc.MEDIUM]))]
+    assert len(tele) >= 1                                       # proactively flagged before close
 
 
-def test_first_run_segment_volume_miss_not_high(assessments):
-    """Telemarketing West launched mid-May (no history) → its volume_miss must not be HIGH."""
+def test_first_run_volume_miss_is_flagged_low_confidence(assessments):
+    """Flag-don't-suppress: a first-run leaf's volume_miss is NOT dropped to LOW — it's flagged at
+    its magnitude with low confidence + a first_run note, so a reviewer sees it."""
     vm = assessments[assessments["alert_type"].str.startswith("volume_miss") &
                      (assessments["segment"] == "Telemarketing") & (assessments["region"] == "West")]
-    assert (vm["risk_level"] != rc.HIGH).all()
+    assert len(vm) > 0
+    assert (vm["confidence"] == "low").all()
+    assert all(s.get("first_run") for s in vm["supporting"])
 
 
 # ---------------------------------------------------------------------------
