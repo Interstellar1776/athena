@@ -210,16 +210,26 @@ tuning knob.
 
 ### cogs_config.csv
 The standing COGS input. **COGS lives in two places by design (§10):** this table is the
-authoritative configured rate; `reference_data.cogs_ref` is the **plan COGS** at the bottom of
-the fallback chain (current input → trailing-avg → plan). Both derive from the same per-leaf
-value, so they can't disagree.
+authoritative configured rate (the **current/actual** COGS); `reference_data.cogs_ref` is the
+**plan COGS** at the bottom of the fallback chain (current input → trailing-avg → plan). They
+derive from the same per-leaf value by default, so they normally agree — **except where an
+engineered anomaly makes the actual diverge from the flat plan** (see below).
+
+This table is also **time-varying**: a unit may carry **more than one effective-dated row** for the
+same leaf, so the standing rate can step up/down over time. `metrics_calculator` resolves the rate
+whose `effective_date` is the latest on/before the period-end.
 
 | Field | Type | Notes |
 |---|---|---|
-| *(dimensions)* | — | The eight hierarchy fields (one row per sub-segment) |
-| cogs_per_unit | float | Cost per unit (resolved per sub-segment; uniform within a unit unless overridden) |
+| *(dimensions)* | — | The eight hierarchy fields (**one row per sub-segment _per effective_date_**) |
+| cogs_per_unit | float | Cost per unit (resolved per sub-segment; uniform within a unit at a given effective_date unless overridden) |
 | cogs_comparison_mode | string | linear_trend / prior_year_same_period / plan_vs_actual / hybrid |
-| effective_date | date | When this input became active (the unit's history start) |
+| effective_date | date | When this rate became active (the unit's history start, or a later step for a rate change) |
+
+*Engineered COGS anomaly (demo):* **Online_Partner, ERCOT North** carries a second row at
+`effective_date 2024-05-15` with `cogs_per_unit` **+22%** above its base, while its plan `cogs_ref`
+stays flat — a standalone COGS-spike / margin-compression beat on an otherwise-calm channel (set via
+`Series.cogs_anomaly` in `shared.py`; see `decisions_log.md`).
 
 ### retention_config.csv
 Drives calculated LTV (config-only — the plan carries computed `ltv_ref`, so no duplication).
