@@ -136,13 +136,26 @@ Python substitutes each token from the finding it already calculated. The model 
 On any given day within a period, Athena:
 
 1. Takes actuals accumulated to date for the current period
-2. Projects them forward to period end using two methods, shown side by side:
-   - **Linear extrapolation:** pace-to-date ÷ days elapsed × days in period
-   - **Weighted trend (trailing-21-day linear regression):** fit a least-squares line over the trailing 21 days of daily values, extrapolate the slope to period end. Falls back to all available data when the period is younger than 21 days. **[LOCKED]** *(supersedes the earlier "weighted recent average" / "weights recent days more heavily"; rationale in `decisions_log.md`)*
+2. Projects them forward to period end — **but the method depends on the metric**, because not every
+   metric has a daily signal to project (see "What projects, and how" below)
 3. Compares that projected period-end figure against plan (or forecast) for the full period
 4. Surfaces the variance as a finding if it crosses a configured threshold
 
 The signal Athena always answers: *"If current trends continue, where will we end the period, and how does that compare to plan?"*
+
+### What projects, and how **[LOCKED]** *(rationale: `decisions_log.md` — projection differs by metric)*
+- **Volume (activations / submissions)** — daily and smooth, so it is projected two ways, shown side
+  by side, both always produced:
+  - **Linear extrapolation:** pace-to-date ÷ days elapsed × days in period (the simple, always-works backup).
+  - **Weighted trend (trailing-21-day cumulative regression):** least-squares slope over the trailing 21
+    days of the **cumulative** daily series, extended to period end. Regressing the cumulative (not daily
+    increments) keeps the slope robust to bursty days. Falls back to all available data when the period is
+    younger than 21 days, and to the linear line when the fit is degenerate.
+- **CPA — not projected.** CPA is ledger-driven (invoice-paced, not a daily signal). Instead its finding
+  pairs the **current run rate** (spend-to-date CPA) with a **month-end estimate drawn from prior months**
+  (trailing CPA), or a **no-history** state — *not* a forward projection of the in-month spike. The alert
+  is the gap between the current run-rate and the historical norm. (Both values come from
+  `metrics_calculator`; the projection layer does no CPA math.)
 
 ### Projection only runs on the current period **[LOCKED]**
 Projection is the proactive question — it is meaningful **only for the period still accumulating
@@ -340,7 +353,7 @@ If price per unit is unavailable, fall back to plan margin input. Always labeled
 
 **Cost:** COGS spike (vs baseline by %, HIGH) · COGS trend (rising N periods, MEDIUM) · Late invoice (posting after close, INFO) · Period restatement (prior CPA changed by % from late invoice, MEDIUM)
 
-**Projection:** Period-end miss linear · Period-end miss weighted (both HIGH/MEDIUM by magnitude) · Plan-vs-forecast gap (divergence > %, MEDIUM)
+**Projection (volume):** Period-end miss linear · Period-end miss weighted (both HIGH/MEDIUM by magnitude) · Plan-vs-forecast gap (divergence > %, MEDIUM). *These evaluate the **volume** projection (§6); CPA has no projection — its alerts (CPA spike/trend, above) compare the current spend-to-date run-rate against the historical/plan CPA, not a projected period-end figure.*
 
 ### Severity and the estimated flag are orthogonal **[LOCKED]**
 Risk level (`HIGH`/`MEDIUM`/`LOW`/`INFO`) is **magnitude only** — how far off plan, never adjusted
@@ -415,8 +428,10 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
     "risk_level": "HIGH",                      # magnitude only — never adjusted for data quality (§11)
     "estimated": True,                         # orthogonal to risk_level: true for any non-real method OR open-period projection (§11)
 
-    "projected_period_end_linear": 148.00,     # populated only when is_projectable
-    "projected_period_end_weighted": 144.00,   # trailing-21-day linear regression, slope to period end (§6)
+    "projected_period_end_linear": 148.00,     # VOLUME findings only, when is_projectable (§6); pace-to-date scaled
+    "projected_period_end_weighted": 144.00,   # VOLUME findings only — trailing-21-day cumulative regression, slope to period end (§6)
+    # CPA findings carry no projection; instead: current_run_rate (spend-to-date CPA) +
+    # month_end_estimate (trailing CPA from prior months, or no_history) — sourced from metrics (§6/§10)
 
     "cogs_per_unit": 0.048,
     "cogs_method": "actual",                   # actual / trailing_avg / plan_input / estimated (§10)

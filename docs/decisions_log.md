@@ -580,6 +580,54 @@ emits a rate change that diverges from a previously-set plan — a future genera
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — module 2: projection_engine)
+
+> Decided in planning + confirmed while building `app/analytics/projection_engine.py`. Refines the
+> §6/§11/§14 projection model (a [LOCKED] area), so the changes are deliberate; docs updated to match.
+
+### Projection differs by metric: volume projects, CPA does not
+**Chose:** Project **volume** (activations/submissions) two ways — linear + trailing-21-day cumulative
+regression. **Do not project CPA**: surface its **current run rate** (spend-to-date CPA, already
+`cpa_monthly`/`gl_partial`) paired with a **month-end estimate from prior months** (trailing CPA,
+already `cpa_t3m`/`trailing_avg`) or a **no-history** state.
+**Rejected:** Projecting every metric "two ways" (the original §6 reading), incl. a daily regression on CPA.
+**Why (owner's call + engineering case):** CPA is ledger-driven and the ledger posts on an invoice
+cadence (weekly/monthly), not daily — there is no smooth daily CPA signal to regress, and a regression
+on spiky invoice data would track invoice timing, not economics. Volume *is* a smooth daily signal, so
+it projects cleanly. For CPA the honest proactive signal is *current run-rate vs the historical norm*
+(e.g. hero May run-rate ~147 vs historical ~117), which needs no forward projection — you can't project
+ledger spend you don't yet have. Supersedes the §6/§11/§14 "both methods for everything" wording.
+
+### Weighted projection regresses the cumulative series, not daily increments
+**Chose:** Fit the trailing-21-day least-squares line to the **cumulative** daily series; slope = recent
+per-day run-rate; `proj = to_date + slope × days_remaining`. Fall back to all-available days (<21
+elapsed), then to the linear line (<2 points / degenerate).
+**Rejected:** Regressing daily *increments* (the literal "21 daily values").
+**Why:** Cumulative is monotonic and well-behaved even when daily activity is bursty; its OLS slope is
+≥0, so the projection can never fall below the to-date value. The linear line is always computed as the
+simple, always-works backup (owner: "a backup to always have").
+
+### projection_engine emits values; risk_classifier computes variances
+**Chose:** Output projected values + plan targets (full-period `*_plan_full` and pro-rated
+`*_plan_prorated`); `risk_classifier` computes every `variance_pct` and assigns risk.
+**Why:** Same separation used for `unit_economics_flag` — values vs. thresholds live in different modules.
+
+### Pro-rating default is calendar_days; activations correctly land every day
+**Chose:** `pro_rate_default` (`calendar_days`) drives the day-count basis for all units; `business_days`
+is a built-but-unmapped per-unit seam (no per-unit config table yet).
+**Why:** Even a weekday-only *submission* channel **converts on weekends** (a weekday sale converts ~2
+days later, landing any day — verified: Door_to_Door has Sat/Sun conversions), so `calendar_days` is
+correct for the **activation** projection. `business_days` matters mainly for *submissions* of
+weekday-only channels — deferred until a per-unit pro-rate config exists.
+
+### projection_engine does not emit a CPA frame (CPA paired downstream)
+**Chose:** Output only the leaf-grain `volume_projection` frame. CPA's run-rate + month-end estimate are
+read from the metrics `cpa` frame and paired by `findings_builder`, not recomputed here.
+**Why:** Keeps "no CPA math in projection" literal and avoids duplicating values metrics already owns.
+**Status:** Flagged for confirmation at plan approval; approved.
+
+---
+
 ## Template for new entries
 
 ```
