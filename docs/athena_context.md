@@ -347,9 +347,13 @@ If price per unit is unavailable, fall back to plan margin input. Always labeled
 
 **[LOCKED]** — these are the core proactive alerts. All thresholds configurable.
 
-**Acquisition:** CPA spike (monthly CPA > plan by %, HIGH) · CPA trend (rising N periods, MEDIUM) · Volume miss (projected activations below plan by %, HIGH) · Fallout rate (lost/in over threshold, MEDIUM)
+**Acquisition:** CPA spike (monthly CPA > plan by %, HIGH) · CPA trend (rising N periods, MEDIUM) · Volume miss (projected activations below plan by %, HIGH) · Fallout rate (MEDIUM/HIGH — see note)
 
-**Unit economics:** CPA-vs-LTV inversion (T12M CPA > LTV, HIGH) · CPA-vs-LTV compression (T12M CPA > % of LTV, default 80%, MEDIUM) · Margin compression (margin % declining N periods, MEDIUM) · Unit-economics inversion (CPA + COGS > revenue per unit, HIGH)
+**Unit economics:** CPA-vs-LTV inversion (**T12M** CPA > LTV, HIGH) · CPA-vs-LTV compression (**T3M** CPA > % of LTV, default 80%, MEDIUM) · Margin compression (margin % declining N periods or under plan, MEDIUM/HIGH) · Unit-economics inversion (CPA + COGS > revenue per unit, HIGH)
+
+*Compression basis revised to **trailing-3-month** CPA (responsive — fires on a single-month spike; T12M is dominated by a year of history and would miss it); the hard inversion stays on T12M. Resolves the open question; supersedes the prior "T12M compression" wording. Rationale in `decisions_log.md`.*
+
+*Fallout rate fires on **degradation vs the channel's own trailing-3-month baseline** (not an absolute rate — every channel runs above its optimistic plan), and **only on resolved cohorts** (a pending current-month cohort is inflated by not-yet-landed conversions — a lagging signal, §8, scored LOW until it settles). Volume miss is **suppressed for first-run leaves** (a mid-period launch has a full-month plan but partial actuals — §9, labeled not alarmed).*
 
 **Cost:** COGS spike (vs baseline by %, HIGH) · COGS trend (rising N periods, MEDIUM) · Late invoice (posting after close, INFO) · Period restatement (prior CPA changed by % from late invoice, MEDIUM)
 
@@ -442,8 +446,8 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
     "unit_economics_flag": False,              # set by risk_classifier (CPA-vs-LTV basis), not metrics_calculator — see decisions_log (§11 inversion alerts)
 
     "gl_completeness_state": "open",           # open / closed / restated / accrued (§10 lifecycle)
-    "frozen_reference": None,                  # settled metric values persisted at close; the baseline a restatement measures against
-    "restatement_delta": None,                 # populated when restated: recomputed value − frozen_reference
+    "frozen_reference": None,                  # DERIVED, not persisted (stateless): the period's CPA on spend posted on/before close (excludes the late/accrued amount)
+    "restatement_delta": None,                 # current CPA − frozen_reference = late_invoice_amount / conversions (computed each run from the ledger — no state store)
 
     "supporting_metrics": {
         "volume_converted_actual": 310,

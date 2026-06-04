@@ -1,9 +1,7 @@
 # Athena — system configuration
 #
 # The SAME codebase runs in dev, demo, and production; only this file changes.
-# Every key here is defined in docs/data_dictionary.md. Alert-threshold keys
-# beyond cpa_ltv_warning_threshold are authored in Build Sequence 3 (risk
-# classifier); only the documented Phase-1 keys live here for now.
+# Every key here is defined in docs/data_dictionary.md.
 
 # --- period & pro-rating ---
 period_close_day: 8             # period closed after this day of the following month; >= conv-lag SLA (7d) so every in-period gain has landed by close (the closed period is final/complete)
@@ -13,7 +11,24 @@ pro_rate_default: calendar_days # calendar_days | business_days (per-entity/segm
 batch_frequency: daily          # daily | weekly | custom cron
 
 # --- unit-economics thresholds ---
-cpa_ltv_warning_threshold: 0.80 # trailing-12-month CPA > 80% of LTV -> MEDIUM compression alert
+cpa_ltv_warning_threshold: 0.80 # CPA > 80% of LTV -> MEDIUM compression alert (evaluated on TRAILING-3-MONTH CPA, the responsive basis; T12M drives the hard inversion)
+
+# --- risk_classifier alert thresholds (Build Sequence 3) ---
+# Every metric is scored HIGH/MEDIUM/LOW (INFO for late invoices); these bands set
+# the magnitude cut-offs. Fractions are unfavorable variance vs the relevant baseline
+# unless noted. Severity is magnitude only — never adjusted for data confidence.
+thresholds:
+  cpa_spike:           {medium: 0.10, high: 0.20}   # monthly CPA over plan cpa_ref
+  cpa_trend_months:    3                             # consecutive rising months -> MEDIUM
+  volume_miss:         {medium: 0.07, high: 0.15}   # projected period-end converted under plan
+  fallout_rate:        {medium: 0.40, high: 0.70}   # fallout RELATIVE to the channel's own trailing-3-mo baseline (resolved); set above monthly noise (~20-45%) so only real degradation fires HIGH
+  cpa_ltv_inversion:   1.00                          # T12M CPA / LTV >= this -> HIGH (hard inversion)
+  margin_compression:  {medium: 0.10, high: 0.20, declining_months: 3}  # margin under plan margin_ref
+  cogs_spike:          {medium: 0.10, high: 0.20}   # cogs_actual over its comparison-mode baseline
+  cogs_trend_months:   3
+  restatement_cpa:     {medium: 0.05}               # CPA change from late/accrued spend
+  plan_vs_forecast:    {medium: 0.10}               # plan cpa_ref vs forecast cpa_ref_fc divergence
+  # compression band reuses cpa_ltv_warning_threshold (0.80), applied to T3M CPA / LTV.
 
 # --- confidence display ---
 min_confidence_display: always_show  # low confidence is shown, never suppressed

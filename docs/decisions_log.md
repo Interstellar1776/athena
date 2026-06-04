@@ -654,6 +654,76 @@ COGS delta."
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — module 3: risk_classifier)
+
+> Decided in planning + confirmed while building `app/analytics/risk_classifier.py` and walking the
+> arc. Thresholds live in `config/system_config.yaml`; doc §11/§14 reconciled.
+
+### Score every metric into one normalized assessment table (LOW included)
+**Chose:** Emit one row per metric × period × grain — *every* metric gets a risk level (HIGH/MEDIUM/
+LOW/INFO), including LOW/on-track. The feed filters; nothing is suppressed.
+**Rejected:** Emitting only threshold crossings.
+**Why:** The owner wants full transparency / browsability ("see or double-click into the data"). A
+complete, uniformly-shaped assessment table also gives `findings_builder` everything it needs and lets
+the UI show "what's off" while still letting a user inspect the calm metrics behind it.
+
+### Finest honest grain; per-event roll-up deferred to findings_builder
+**Chose:** Classify at the finest grain each metric's data supports — **leaf** for COGS/margin/fallout/
+volume, **unit** for CPA & CPA-vs-LTV (GL only resolves to unit). Each row carries `group_key`
+(entity|region|segment); the roll-up of a multi-leaf event into one feed alert with leaf drill-down is
+`findings_builder`'s job.
+**Why:** Matches the metric-driven-grain rule and the owner's "most granular calculation possible," while
+keeping the feed digestible (one COGS-anomaly event = 3 leaf rows → one rolled-up alert downstream).
+
+### CPA-vs-LTV: compression on T3M, inversion on T12M
+**Chose:** Compression (MEDIUM, ≤ MEDIUM cap) on **trailing-3-month** CPA / LTV ≥ 0.80; inversion (HIGH)
+on **trailing-12-month** CPA / LTV ≥ 1.0.
+**Rejected:** Compression on T12M (the prior §11 wording).
+**Why:** Verified in the data — Door_to_Door North sits at **T3M/LTV = 0.846** (crosses, fires) but
+**T12M/LTV = 0.766** (a year of history swamps one month's spike, never crosses). T3M is the responsive
+basis the proactive signal needs; T12M is the slow-burn unit-economics guardrail. Resolves the open
+question; supersedes a [LOCKED] §11 line (revised deliberately).
+
+### Fallout fires on degradation vs the channel's OWN trailing baseline (resolved cohorts only)
+**Chose:** Band fallout on the **relative rise over a trailing-3-month (prior) baseline** per leaf,
+**only for resolved cohorts**; threshold MEDIUM 0.40 / HIGH 0.70 (above monthly noise ~20–45%).
+**Rejected:** Absolute fallout threshold (every channel's resolved rate is similar ~13–20% — Telemarketing
+only stands out *relative to its own history*); fallout-vs-plan (every channel runs ~45–110% above its
+optimistic plan → fires everywhere = cry-wolf); banding pending cohorts (inflated by not-yet-landed
+conversions — a lagging signal that only resolves post-close, §8).
+**Why:** The engineered fallout channel (Telemarketing) degrades to **+85–139% above its own trailing
+norm** and fires HIGH **at June-8 when the May cohort resolves** — exactly the lagging-signal beat — while
+calm channels stay LOW. A pending current cohort is scored LOW (with the flag) until it settles, so Athena
+never cries wolf on an unresolved outcome.
+
+### First-run volume_miss is not a hard alert
+**Chose:** A leaf with no prior-period history (launched this period) is **not banded** for volume_miss —
+it stays LOW with a `first_run` note.
+**Why:** A mid-period launch (e.g. Telemarketing West, live May 15) has a *full-month* plan but only
+post-launch actuals, so the projected "miss" (~−76%) is a spurious comparison, not a real shortfall (§9 —
+first run is labeled, never alarmed). Without this guard it fired a false HIGH.
+
+### Severity is magnitude-only; estimated flips real across close (the honesty beat)
+**Chose:** Risk level = magnitude only; a separate `estimated` boolean (non-`real`/`calculated` method or
+any projection). An **estimated HIGH stays HIGH**.
+**Why (and the payoff):** At **May-22** the CPA spikes are HIGH **and `estimated=True`** (open-period
+`gl_partial`); at **June-8** the same spikes are HIGH **and `estimated=False`** (settled `real`). Athena
+warns three weeks early *and labels exactly how sure it is* — never muting the alarm for low confidence.
+
+### Restatement / frozen_reference derived statelessly (Option B)
+**Chose:** Per the owner's Option B — `frozen_reference` = period CPA on spend posted on/before close;
+`restatement_delta` = current − frozen = `late_invoice_amount / conversions`. Computed each run from
+`gl_states`; no persistence.
+**Why:** Keeps the whole pipeline stateless/recomputed-every-run (the owner's preference) and still
+surfaces the late-April **accrued** update (Door_to_Door North, +7.8% CPA impact, MEDIUM) in-window.
+**Status (open):** the demo has no *post-close* restatement (the May true-up posts June 6, before the
+June-8 close → `accrued`, not `restated`); the restatement state is exercised only if the generator posts
+a true-up after close. And the COGS-spike `linear_trend` baseline currently includes the current month
+(dampens a fresh step to MEDIUM, ~+13.7% vs trailing, while margin-compression carries the HIGH); a
+prior-period baseline is a noted refinement.
+
+---
+
 ## Template for new entries
 
 ```

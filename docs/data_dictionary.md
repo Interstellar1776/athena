@@ -246,7 +246,8 @@ Drives calculated LTV (config-only — the plan carries computed `ltv_ref`, so n
 | period_close_day | int | Day after which a period is considered closed |
 | pro_rate_default | string | calendar_days or business_days |
 | batch_frequency | string | daily / weekly / custom cron |
-| cpa_ltv_warning_threshold | float | Default 0.80 — triggers MEDIUM CPA-vs-LTV alert |
+| cpa_ltv_warning_threshold | float | Default 0.80 — MEDIUM CPA-vs-LTV **compression** alert, evaluated on **T3M** CPA / LTV |
+| thresholds | map | `risk_classifier` alert bands (BS3). Sub-keys: `cpa_spike`/`cogs_spike`/`margin_compression`/`volume_miss` `{medium, high}` (fractional variance); `fallout_rate {medium, high}` (relative to the channel's trailing baseline); `cpa_ltv_inversion` (T12M CPA/LTV); `restatement_cpa {medium}`; `plan_vs_forecast {medium}`; `cpa_trend_months`/`cogs_trend_months` (int) |
 | min_confidence_display | string | always_show — low confidence shown, never suppressed |
 | data_mode | string | snapshot or live |
 | snapshot_date | date | Active snapshot — ignored in live mode |
