@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 """findings_builder.py — assemble the §14 structured findings from the assessment table.
 
-Build Sequence §19 step 3 (context doc §15), after ``risk_classifier``. This is the bridge from the
-flat **assessment table** (every metric × period × grain, scored) to the **structured findings** that
-are the system contract (§14) every downstream module reads (context retrieval → narrative → report).
-It is **deterministic — no LLM**.
+Build Sequence §19 step 3 (context doc §15), after ``risk_classifier``. The deterministic bridge
+(no LLM) from the flat **assessment table** (every metric × period × grain, scored) to the
+**structured findings** that are the system contract (§14) every downstream module reads.
 
-What it does (decisions in ``docs/decisions_log.md`` — BS3 analytics core, module 4):
+What it does (decisions in ``docs/decisions_log.md`` — BS3 analytics core, module 4 + refinements):
 
-* **Non-LOW become findings.** HIGH/MEDIUM/INFO assessments are turned into §14 findings; the full
-  assessment table travels alongside as the **browse / drill-down layer** ("see everything" lives
-  there, not as a heavy finding per on-track metric).
-* **Roll up to one finding per (alert_type, unit, period).** Leaf-grain alerts (COGS / margin /
-  fallout / volume) roll leaf→unit — max severity, the *worst leaf* as the headline — with every
-  leaf nested under ``supporting_metrics.leaves`` for the double-click. (The COGS anomaly is one
-  finding holding its 3 leaves.)
-* **Bundle the unit's economic context** (§14 [LOCKED]): COGS/LTV/margin + method labels,
-  ``unit_economics_flag``, ``gl_completeness_state``, volume projections, ``frozen_reference`` /
-  ``restatement_delta``, and ``supporting_metrics``.
-* **Rank for the feed** across the 6-month window: severity (HIGH>MEDIUM>INFO) → magnitude → recency;
-  ``finding_id`` ``F-001…`` assigned in ranked order.
+* **Non-LOW become findings.** HIGH/MEDIUM/INFO assessments → §14 findings; the full assessment table
+  travels alongside as the browse / drill-down layer.
+* **One finding per (alert_type, unit, period).** Leaf-grain alerts roll leaf→unit; every leaf is
+  nested under ``supporting_metrics.leaves``. **Volume is one finding** carrying both the linear and
+  weighted period-end projections (not two).
+* **Headline = the unit aggregate** (not the worst leaf): fallout submission-weighted, volume summed,
+  COGS/margin mean; the finding's primary-metric context field is set to that aggregate so they agree.
+  **Severity stays max-leaf** (a leaf-level HIGH still makes the unit finding HIGH — don't-miss); the
+  worst leaf is always in the drill-down.
+* **Rank by normalized exceedance** — magnitude ÷ the alert's own crossed threshold — so different
+  alert types are comparable (and the CPA-vs-LTV ratio is normalized, not treated as a raw %).
+* **Bundle context** (§14): COGS/LTV/margin + methods, ``unit_economics_flag``,
+  ``gl_completeness_state``, projections, ``frozen_reference`` / ``restatement_delta``,
+  ``supporting_metrics``.
 
 CLI:
     python -m app.analytics.findings_builder
-    # run the chain; print the ranked feed + count by risk level.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ import datetime as dt
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -45,18 +46,36 @@ logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SYSTEM_CONFIG = REPO_ROOT / "config" / "system_config.yaml"
 
-FLAGGED = {HIGH, MEDIUM, INFO}                       # what becomes a finding (LOW stays in the table)
+FLAGGED = {HIGH, MEDIUM, INFO}
 SEVERITY_RANK = {HIGH: 0, MEDIUM: 1, INFO: 2, LOW: 3}
 LEAF_ONLY = [c for c in DIMS if c not in UNIT]
-VOLUME_ALERTS = {"volume_miss_linear", "volume_miss_weighted"}
+VOLUME_LINES = {"volume_miss_linear", "volume_miss_weighted"}
+VOLUME = "volume_miss"
+
+# Per-alert recipe for aggregation + exceedance — one explicit table so feed semantics can't drift.
+#   kind:   how the magnitude relates to the threshold ("two_band" / "single" / "ratio" / "trend")
+#   thr:    threshold key in the config thresholds block, or "warn"/"inversion" for the CPA-vs-LTV pair
+#   weight: how leaf rows roll to the unit headline ("none"=already unit, "mean", "submissions", "sum")
+ALERT_SPEC = {
+    "cpa_spike":            ("two_band", "cpa_spike", "none"),
+    "cpa_trend":            ("trend", None, "none"),
+    "fallout_rate":         ("two_band", "fallout_rate", "submissions"),
+    "cpa_ltv_inversion":    ("ratio", "inversion", "none"),
+    "cpa_ltv_compression":  ("ratio", "warn", "none"),
+    "margin_compression":   ("two_band", "margin_compression", "mean"),
+    "cogs_spike":           ("two_band", "cogs_spike", "mean"),
+    "restatement":          ("single", "restatement_cpa", "none"),
+    "plan_vs_forecast_gap": ("single", "plan_vs_forecast", "none"),
+    VOLUME:                 ("two_band", "volume_miss", "sum"),
+}
+# Which §14 context field a finding's primary metric writes back to (so actual == context).
+PRIMARY_CONTEXT = {"margin_compression": "margin_per_unit", "cogs_spike": "cogs_per_unit"}
 
 
 # ===========================================================================
 # 1. Context lookups — built once, keyed by (unit, period)
 # ===========================================================================
 def _unit_economics(economics: pd.DataFrame) -> dict:
-    """The unit's economic context (COGS/LTV/margin + methods), rolled from leaves (mean — uniform
-    within a unit), keyed (entity, region, segment, period)."""
     g = economics.groupby(UNIT + ["period"], observed=True)
     rolled = g.agg(cogs_per_unit=("cogs_per_unit", "mean"), cogs_method=("cogs_method", "first"),
                    ltv=("ltv", "mean"), ltv_method=("ltv_method", "first"),
@@ -66,30 +85,16 @@ def _unit_economics(economics: pd.DataFrame) -> dict:
 
 
 def _unit_cpa(cpa: pd.DataFrame) -> dict:
-    """GL state + CPA bases per (unit, period), for context on every finding of that unit."""
     return {tuple(r[c] for c in UNIT + ["period"]): r for _, r in cpa.iterrows()}
 
 
 def _unit_economics_flags(assessments: pd.DataFrame) -> set:
-    """(unit, period) where CPA-vs-LTV inversion crossed (HIGH) — the §14 unit_economics_flag."""
     inv = assessments[(assessments["alert_type"] == "cpa_ltv_inversion") &
                       (assessments["risk_level"] == HIGH)]
     return {tuple(r[c] for c in UNIT + ["period"]) for _, r in inv.iterrows()}
 
 
-def _volume_projection_by_unit(volume_proj: pd.DataFrame) -> dict:
-    """Period-end volume projections summed leaf→unit, keyed (unit, period) — for volume findings."""
-    if volume_proj is None or volume_proj.empty:
-        return {}
-    g = (volume_proj.groupby(UNIT + ["period"], observed=True)
-         .agg(linear=("converted_proj_linear", "sum"),
-              weighted=("converted_proj_weighted", "sum")).reset_index())
-    return {tuple(r[c] for c in UNIT + ["period"]): r for _, r in g.iterrows()}
-
-
 def _day_counts(volume_proj: pd.DataFrame, current_period: str) -> dict:
-    """period → (days_elapsed, days_in_period). Current period from the projection (partial); any
-    other (closed) period is fully elapsed."""
     out = {}
     if volume_proj is not None and len(volume_proj):
         row = volume_proj.iloc[0]
@@ -100,72 +105,97 @@ def _day_counts(volume_proj: pd.DataFrame, current_period: str) -> dict:
 def _days_for(period: str, day_counts: dict) -> tuple[int, int]:
     if period in day_counts:
         return day_counts[period]
-    n = pd.Period(period, freq="M").days_in_month        # closed period → fully elapsed
+    n = pd.Period(period, freq="M").days_in_month
     return n, n
 
 
 # ===========================================================================
-# 2. Roll a group of leaf rows into one finding's headline + leaf breakdown
+# 2. Aggregation (leaf→unit headline) + normalized exceedance (ranking)
 # ===========================================================================
-def _magnitude(row) -> float:
-    v = row.get("variance_pct")
-    return abs(v) if pd.notna(v) else 0.0
-
-
-def _roll_group(group: pd.DataFrame) -> tuple[pd.Series, list[dict]]:
-    """Headline = the worst leaf (max unfavorable magnitude, breaking ties on max severity); the
-    nested leaf breakdown carries every leaf for drill-down."""
+def _worst_leaf(group: pd.DataFrame) -> pd.Series:
+    """Severity-driving row: max severity, then max |variance| — keeps don't-miss intact."""
     g = group.copy()
     g["_sev"] = g["risk_level"].map(SEVERITY_RANK)
-    g["_mag"] = g.apply(_magnitude, axis=1)
-    headline = g.sort_values(["_sev", "_mag"], ascending=[True, False]).iloc[0]
-    leaves = [{**{c: r[c] for c in DIMS}, "actual": r["actual"], "variance_pct": r["variance_pct"],
-               "risk_level": r["risk_level"], "supporting": r["supporting"]}
-              for _, r in group.iterrows()]
-    return headline, leaves
+    g["_mag"] = g["variance_pct"].abs().fillna(0.0)
+    return g.sort_values(["_sev", "_mag"], ascending=[True, False]).iloc[0]
+
+
+def _aggregate(group: pd.DataFrame, weight: str) -> tuple[float, float, float]:
+    """Unit-level (actual, reference, variance_pct) per the weight rule (§ headline = unit aggregate)."""
+    if weight == "none":                                     # already unit-grain (single row)
+        r = group.iloc[0]
+        return r["actual"], r["reference_value"], r["variance_pct"]
+    actual = group["actual"].astype(float)
+    ref = group["reference_value"].astype(float)
+    if weight == "submissions":
+        w = group["supporting"].map(lambda s: (s or {}).get("submissions", 0)).astype(float)
+        if w.sum() == 0:                                     # guard: fall back to equal weights
+            w = pd.Series(1.0, index=w.index)
+        a, rf = float((actual * w).sum() / w.sum()), float((ref * w).sum() / w.sum())
+    elif weight == "sum":
+        a, rf = float(actual.sum()), float(ref.sum())
+    else:                                                    # mean (uniform within a unit today)
+        a, rf = float(actual.mean()), float(ref.mean())
+    var = (a - rf) / rf * 100 if rf else np.nan
+    return a, rf, round(var, 2)
+
+
+def _exceedance(alert_type: str, variance_pct: float, risk_level: str,
+                thresholds: dict, warn: float) -> float:
+    """How far past its OWN threshold a finding sits — comparable across alert types. ≥1 = past the
+    crossed cut; bigger = worse. The CPA-vs-LTV ratio is normalized here (ratio ÷ threshold), not
+    treated as a percentage."""
+    kind, key, _ = ALERT_SPEC[alert_type]
+    if kind == "trend" or variance_pct is None or pd.isna(variance_pct):
+        return 1.0                                           # at-threshold (no magnitude to scale)
+    if kind == "ratio":
+        ratio = variance_pct / 100.0
+        threshold = warn if key == "warn" else float(thresholds["cpa_ltv_inversion"])
+        return ratio / threshold if threshold else 1.0
+    band = thresholds[key]
+    crossed = band["high"] if risk_level == HIGH else band.get("medium", band.get("high"))
+    return (abs(variance_pct) / 100.0) / crossed if crossed else 1.0
+
+
+def _leaf_rows(group: pd.DataFrame) -> list[dict]:
+    return [{**{c: r[c] for c in DIMS}, "actual": r["actual"], "variance_pct": r["variance_pct"],
+             "risk_level": r["risk_level"], "supporting": r["supporting"]}
+            for _, r in group.iterrows()]
 
 
 # ===========================================================================
 # 3. Assemble one §14 finding
 # ===========================================================================
-def _assemble(headline: pd.Series, leaves: list[dict], *, econ: dict, cpa_ctx: dict,
-              econ_flags: set, vol_proj: dict, day_counts: dict, current_period: str) -> dict:
+def _assemble(headline: pd.Series, leaves: list[dict], *, alert_type: str, actual: float,
+              reference: float, variance_pct: float, exceedance: float,
+              projections: tuple | None, econ: dict, cpa_ctx: dict, econ_flags: set,
+              day_counts: dict, current_period: str) -> dict:
     period = headline["period"]
     unit_key = (headline["entity"], headline["region"], headline["segment"], period)
-    alert_type = headline["alert_type"]
     days_elapsed, days_in = _days_for(period, day_counts)
-
-    e = econ.get(unit_key)
-    c = cpa_ctx.get(unit_key)
-    is_volume = alert_type in VOLUME_ALERTS
-    vp = vol_proj.get(unit_key) if is_volume else None
+    e, c = econ.get(unit_key), cpa_ctx.get(unit_key)
     is_restatement = alert_type == "restatement"
+    gl_state = c["gl_completeness_state"] if c is not None else None
+    if not isinstance(gl_state, str):                        # nan (no posted GL) → None, not a float
+        gl_state = None
 
     finding = {
-        "finding_id": None,                                  # assigned after ranking
+        "finding_id": None,
         "entity": headline["entity"], "region": headline["region"], "segment": headline["segment"],
-        # leaf-only dims stay blank on a rolled unit finding — the spread lives in leaves.
-        **{c2: "" for c2 in LEAF_ONLY},
-        "metric": headline["metric"],
-        "alert_type": alert_type,
-        "grain": headline["grain"],
-        "period": period,
-        "days_elapsed": days_elapsed,
-        "days_in_period": days_in,
-        "confidence": headline["confidence"],
-        "is_projectable": period == current_period,
+        **{c2: "" for c2 in LEAF_ONLY},                      # rolled unit finding — spread is in leaves
+        "metric": headline["metric"], "alert_type": alert_type, "grain": headline["grain"],
+        "period": period, "days_elapsed": days_elapsed, "days_in_period": days_in,
+        "confidence": headline["confidence"], "is_projectable": period == current_period,
 
-        "actual": headline["actual"],
+        "actual": round(actual, 4) if actual is not None and pd.notna(actual) else None,
         "actual_method": headline["actual_method"],
-        "reference_value": headline["reference_value"],
+        "reference_value": round(reference, 4) if reference is not None and pd.notna(reference) else None,
         "reference_type": headline["reference_type"],
-        "variance_pct": headline["variance_pct"],
-        "variance_direction": headline["variance_direction"],
-        "risk_level": headline["risk_level"],
-        "estimated": bool(headline["estimated"]),
+        "variance_pct": variance_pct, "variance_direction": headline["variance_direction"],
+        "risk_level": headline["risk_level"], "estimated": bool(headline["estimated"]),
 
-        "projected_period_end_linear": round(vp["linear"], 2) if vp is not None else None,
-        "projected_period_end_weighted": round(vp["weighted"], 2) if vp is not None else None,
+        "projected_period_end_linear": projections[0] if projections else None,
+        "projected_period_end_weighted": projections[1] if projections else None,
 
         "cogs_per_unit": round(e["cogs_per_unit"], 4) if e is not None else None,
         "cogs_method": e["cogs_method"] if e is not None else None,
@@ -175,51 +205,82 @@ def _assemble(headline: pd.Series, leaves: list[dict], *, econ: dict, cpa_ctx: d
         "margin_method": e["margin_method"] if e is not None else None,
         "unit_economics_flag": unit_key in econ_flags,
 
-        "gl_completeness_state": c["gl_completeness_state"] if c is not None else None,
-        "frozen_reference": (round(headline["reference_value"], 2) if is_restatement else None),
-        "restatement_delta": (round(headline["actual"] - headline["reference_value"], 2)
-                              if is_restatement else None),
+        "gl_completeness_state": gl_state,
+        "frozen_reference": (round(reference, 2) if is_restatement else None),
+        "restatement_delta": (round(actual - reference, 2) if is_restatement else None),
 
-        "supporting_metrics": {**(headline["supporting"] or {}),
-                               "grain": headline["grain"], "leaf_count": len(leaves),
+        "supporting_metrics": {**(headline["supporting"] or {}), "grain": headline["grain"],
+                               "leaf_count": len(leaves), "exceedance": round(exceedance, 3),
                                "leaves": leaves},
-
-        # populated downstream
-        "retrieved_context": "",
-        "narrative": "",
-        "validated": False,
-        "validation_flags": [],
+        "retrieved_context": "", "narrative": "", "validated": False, "validation_flags": [],
     }
+    # Align the primary metric's context field to the headline aggregate (so actual == context).
+    ctx_field = PRIMARY_CONTEXT.get(alert_type)
+    if ctx_field and finding["actual"] is not None:
+        finding[ctx_field] = finding["actual"]
     return finding
+
+
+def _build_volume_finding(group: pd.DataFrame, **ctx) -> dict:
+    """One volume_miss finding per unit carrying BOTH projections (linear + weighted)."""
+    lin = group[group["alert_type"] == "volume_miss_linear"]
+    wt = group[group["alert_type"] == "volume_miss_weighted"]
+    plan_sum = float(wt["reference_value"].astype(float).sum()) or float(lin["reference_value"].astype(float).sum())
+    lin_sum, wt_sum = float(lin["actual"].sum()), float(wt["actual"].sum())
+    var_wt = (wt_sum - plan_sum) / plan_sum * 100 if plan_sum else np.nan
+    headline = _worst_leaf(group)                            # severity from the worse line/leaf
+    exc = _exceedance(VOLUME, var_wt, headline["risk_level"], ctx["thresholds"], ctx["warn"])
+    leaves = _leaf_rows(wt if len(wt) else lin)
+    f = _assemble(headline, leaves, alert_type=VOLUME, actual=wt_sum, reference=plan_sum,
+                  variance_pct=round(var_wt, 2), exceedance=exc,
+                  projections=(round(lin_sum, 2), round(wt_sum, 2)),
+                  econ=ctx["econ"], cpa_ctx=ctx["cpa_ctx"], econ_flags=ctx["econ_flags"],
+                  day_counts=ctx["day_counts"], current_period=ctx["current_period"])
+    f["metric"] = "volume_converted"
+    return f
 
 
 # ===========================================================================
 # 4. Public entry points
 # ===========================================================================
 def build_findings(assessments: pd.DataFrame, metrics: dict[str, pd.DataFrame],
-                   projection: dict[str, pd.DataFrame], *, snapshot_date: dt.date) -> list[dict]:
-    """Select non-LOW assessments, roll them into §14 findings, rank, and assign ids."""
+                   projection: dict[str, pd.DataFrame], *, snapshot_date: dt.date,
+                   thresholds: dict, cpa_ltv_warning_threshold: float = 0.80) -> list[dict]:
+    """Select non-LOW assessments, roll into §14 findings (unit-aggregate headline, volume merged),
+    rank by exceedance, assign ids."""
     current_period = _snapshot_period(snapshot_date)
-    econ = _unit_economics(metrics["economics"])
-    cpa_ctx = _unit_cpa(metrics["cpa"])
-    econ_flags = _unit_economics_flags(assessments)
-    vol_proj = _volume_projection_by_unit(projection.get("volume_projection"))
-    day_counts = _day_counts(projection.get("volume_projection"), current_period)
+    ctx = dict(econ=_unit_economics(metrics["economics"]), cpa_ctx=_unit_cpa(metrics["cpa"]),
+               econ_flags=_unit_economics_flags(assessments),
+               day_counts=_day_counts(projection.get("volume_projection"), current_period),
+               current_period=current_period, thresholds=thresholds, warn=cpa_ltv_warning_threshold)
 
     flagged = assessments[assessments["risk_level"].isin(FLAGGED)]
-    findings = []
-    for _, group in flagged.groupby(["alert_type", "group_key", "period"], sort=False):
-        headline, leaves = _roll_group(group)
-        findings.append(_assemble(headline, leaves, econ=econ, cpa_ctx=cpa_ctx,
-                                  econ_flags=econ_flags, vol_proj=vol_proj,
-                                  day_counts=day_counts, current_period=current_period))
+    findings: list[dict] = []
 
-    # Rank: severity → magnitude → recency; deterministic tie-break on (group_key, alert_type).
+    # Volume: merge the two projection lines into one finding per (unit, period).
+    vol = flagged[flagged["alert_type"].isin(VOLUME_LINES)]
+    for _, group in vol.groupby(["group_key", "period"], sort=False):
+        findings.append(_build_volume_finding(group, **ctx))
+
+    # Everything else: one finding per (alert_type, unit, period), unit-aggregate headline.
+    rest = flagged[~flagged["alert_type"].isin(VOLUME_LINES)]
+    for (alert_type, _, _), group in rest.groupby(["alert_type", "group_key", "period"], sort=False):
+        headline = _worst_leaf(group)
+        _, _, weight = ALERT_SPEC[alert_type]
+        actual, reference, variance_pct = _aggregate(group, weight)
+        exc = _exceedance(alert_type, variance_pct, headline["risk_level"], thresholds,
+                          cpa_ltv_warning_threshold)
+        findings.append(_assemble(headline, _leaf_rows(group), alert_type=alert_type, actual=actual,
+                                  reference=reference, variance_pct=variance_pct, exceedance=exc,
+                                  projections=None, econ=ctx["econ"], cpa_ctx=ctx["cpa_ctx"],
+                                  econ_flags=ctx["econ_flags"], day_counts=ctx["day_counts"],
+                                  current_period=current_period))
+
+    # Rank: severity → exceedance → recency; deterministic tie-break.
     findings.sort(key=lambda f: (
         SEVERITY_RANK[f["risk_level"]],
-        -abs(f["variance_pct"]) if f["variance_pct"] is not None and pd.notna(f["variance_pct"]) else 0.0,
-        f["period"] < current_period,                        # current period first
-        f["period"],
+        -f["supporting_metrics"]["exceedance"],
+        f["period"] < current_period, f["period"],
         f"{f['entity']}|{f['region']}|{f['segment']}", f["alert_type"]))
     for i, f in enumerate(findings, start=1):
         f["finding_id"] = f"F-{i:03d}"
@@ -231,7 +292,7 @@ def build_findings(assessments: pd.DataFrame, metrics: dict[str, pd.DataFrame],
 
 
 def compute_findings(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict:
-    """Convenience entry: run the full chain; return the feed (findings) + browse layer (assessments)."""
+    """Run the full chain; return the feed (findings) + browse layer (assessments)."""
     from app.analytics.data_loader import load_data
     from app.analytics.data_merger import merge_frames
     from app.analytics.gl_processor import process_gl
@@ -242,6 +303,7 @@ def compute_findings(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict:
     cfg = yaml.safe_load(Path(config_path).read_text())
     snapshot_date = dt.date.fromisoformat(str(cfg["snapshot_date"]))
     period_close_day = int(cfg["period_close_day"])
+    warn = float(cfg["cpa_ltv_warning_threshold"])
     data = load_data(config_path)
     merged = merge_frames(data)
     gl_states = process_gl(merged["gl_acquisition"], config_path)
@@ -252,8 +314,9 @@ def compute_findings(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict:
                   **project_fallout(data, metrics, snapshot_date=snapshot_date)}
     assessments = classify(metrics, projection, gl_states, data["reference_data"],
                            snapshot_date=snapshot_date, thresholds=cfg["thresholds"],
-                           cpa_ltv_warning_threshold=float(cfg["cpa_ltv_warning_threshold"]))["assessments"]
-    findings = build_findings(assessments, metrics, projection, snapshot_date=snapshot_date)
+                           cpa_ltv_warning_threshold=warn)["assessments"]
+    findings = build_findings(assessments, metrics, projection, snapshot_date=snapshot_date,
+                              thresholds=cfg["thresholds"], cpa_ltv_warning_threshold=warn)
     return {"findings": findings, "assessments": assessments}
 
 
@@ -265,12 +328,12 @@ def main() -> int:
     findings = compute_findings()["findings"]
     print(f"\n=== ranked feed ({len(findings)} findings) ===")
     for f in findings:
-        leaves = f["supporting_metrics"]["leaf_count"]
         v = f["variance_pct"]
         vstr = f"{v:+.1f}%" if v is not None and pd.notna(v) else "  —  "
+        exc = f["supporting_metrics"]["exceedance"]
         print(f"  {f['finding_id']}  {f['risk_level']:<6} {f['alert_type']:<20} "
-              f"{f['entity']}/{f['region']}/{f['segment']:<20} {f['period']}  "
-              f"{vstr:>8}  est={str(f['estimated']):<5} leaves={leaves}")
+              f"{f['entity']}/{f['region']}/{f['segment']:<20} {f['period']}  {vstr:>8}  "
+              f"x{exc:<5} est={str(f['estimated']):<5} leaves={f['supporting_metrics']['leaf_count']}")
     return 0
 
 

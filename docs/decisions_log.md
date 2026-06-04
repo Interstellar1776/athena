@@ -794,6 +794,45 @@ spikes/fallout: estimated warning at May-22 → confirmed real at June-8) — th
 
 ---
 
+## 2026 — Build Sequence 3 (findings_builder — review refinements)
+
+> Five holes found reviewing the first cut; the owner answered the three judgment ones. All fixed in
+> `findings_builder.py` (no upstream change).
+
+### One volume finding per unit, carrying both projection lines
+**Chose:** Merge `volume_miss_linear` + `volume_miss_weighted` into a single `volume_miss` finding
+holding both `projected_period_end_linear` and `_weighted`; severity from the worse line.
+**Why:** §14 has both projection fields in one finding; two findings double-counted the volume story.
+
+### Headline = unit (volume-weighted) aggregate; severity stays max-leaf
+**Chose:** A rolled finding's headline `actual`/`reference`/`variance` is the **unit aggregate**
+(fallout submission-weighted, volume summed, COGS/margin mean), and the primary metric's context field
+is set to that aggregate so they agree (fixes the worst-leaf-vs-unit-mean mismatch). **Severity and
+selection stay max-leaf** — a leaf-level HIGH still surfaces the unit finding as HIGH (don't-miss); the
+worst leaf is always in `supporting_metrics.leaves`.
+**Rejected:** Worst-leaf as the headline number (a single leaf on a unit-labeled finding); full
+aggregate severity (would let a lone-leaf HIGH drop out of the feed).
+**Why:** The exec sees a true unit-level number, while nothing is missed and the spread is one
+double-click away. **Status (open):** headline value (aggregate) and severity (worst leaf) can differ —
+intentional; flip to aggregate severity if a leaner feed is wanted later.
+
+### Rank by normalized exceedance over each alert's own threshold
+**Chose:** Within a severity band, rank by `magnitude ÷ the crossed threshold` (driven by a single
+`ALERT_SPEC` table), so cpa_spike / cogs / fallout / volume / cpa-ltv are comparable. The CPA-vs-LTV
+ratio is normalized (`ratio ÷ 0.80`), not treated as a raw %.
+**Rejected:** Raw `|variance_pct|` (mixed incomparable scales — the cpa-ltv ratio of ~85 outranked a
+real +22% CPA spike).
+**Why:** Makes the feed order meaningful across alert types. Verified: cpa-ltv compression dropped from
+mid-HIGH-magnitude to its true position (x1.06, just past threshold); the demo HIGHs lead by exceedance.
+**Status (open):** ranking ignores confidence, so a low-confidence **first-run** volume miss can top its
+severity by magnitude — acceptable under flag-don't-suppress (the deferred fix is pro-rating the
+launch-month plan; a confidence-aware tie-break is an alternative).
+
+### Minor: gl_completeness_state nan → None
+A monthly-cadence unit with no posted GL had `nan` (a float) in the string field; now `None`.
+
+---
+
 ## Template for new entries
 
 ```

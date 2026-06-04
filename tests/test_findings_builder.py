@@ -122,6 +122,45 @@ def test_feed_ranked_by_severity(findings):
     assert findings[0]["risk_level"] == HIGH
 
 
+def test_feed_ranked_by_exceedance_within_severity(findings):
+    """Within a severity band, findings descend by normalized exceedance (comparable across
+    alert types), so a small-ratio cpa_ltv no longer outranks a larger-exceedance spike."""
+    from itertools import groupby
+    for _, grp in groupby(findings, key=lambda f: f["risk_level"]):
+        exc = [f["supporting_metrics"]["exceedance"] for f in grp]
+        assert exc == sorted(exc, reverse=True)
+
+
+# ---------------------------------------------------------------------------
+# Review fixes: volume consolidation, aggregate==context, gl None
+# ---------------------------------------------------------------------------
+def test_volume_is_one_finding_per_unit_with_both_projections(findings):
+    vol = [f for f in findings if f["alert_type"] == "volume_miss"]
+    assert len(vol) > 0
+    keys = [(f["region"], f["segment"], f["period"]) for f in vol]
+    assert len(keys) == len(set(keys))                       # one per unit, not linear+weighted split
+    for f in vol:
+        assert f["projected_period_end_linear"] is not None
+        assert f["projected_period_end_weighted"] is not None
+
+
+def test_headline_aggregate_equals_primary_context(findings):
+    """For margin/COGS findings the headline `actual` now equals the unit context field (fix D)."""
+    for f in findings:
+        if f["alert_type"] == "margin_compression":
+            assert f["actual"] == f["margin_per_unit"]
+        if f["alert_type"] == "cogs_spike":
+            assert f["actual"] == f["cogs_per_unit"]
+
+
+def test_gl_state_is_none_not_nan(findings):
+    import math
+    for f in findings:
+        gs = f["gl_completeness_state"]
+        assert gs is None or isinstance(gs, str)             # never a float nan
+        assert not (isinstance(gs, float) and math.isnan(gs))
+
+
 def test_finding_ids_sequential_and_deterministic():
     a = fb.compute_findings()["findings"]
     b = fb.compute_findings()["findings"]
