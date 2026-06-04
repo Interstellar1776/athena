@@ -628,6 +628,32 @@ read from the metrics `cpa` frame and paired by `findings_builder`, not recomput
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — engineered COGS anomaly)
+
+### A COGS anomaly added to the generator (Online_Partner ERCOT North)
+**Chose:** Engineer a standalone COGS-spike / margin-compression beat by adding a `cogs_anomaly`
+field to the `Series` roster (`scripts/generators/shared.py`) and emitting a **second,
+effective-dated `cogs_config` row** for the target unit in `canonical_cogs_config_rows()`. Target:
+**Online_Partner, ERCOT North** (a calm channel with *no* CPA spike, and with a price so margin is
+computed) — actual COGS steps **+22%** (31.0 → 37.82) effective **2024-05-15**, while the plan
+`cogs_ref` stays flat at 31.0. So May reads `cogs_actual 37.82` vs `cogs_plan 31.0` (+22%) and
+margin compresses ~25% (27.0 → 20.24); April and prior stay calm.
+**Rejected:** Putting it on Web_Direct (the docs' "online advertising" channel — the user excluded
+it) or compounding it onto a CPA-spike segment (Door_to_Door / Telemarketing) — keeping the COGS and
+CPA stories on *separate* segments so the narrative can attribute each cleanly.
+**Why:** Until now `cogs_actual == cogs_plan` everywhere (the revision-6 one-source invariant), so the
+entire COGS alert family + `cogs_comparison_mode` machinery had **no signal** to fire on. This gives
+the COGS-spike alert (and a margin-compression beat) a real, isolatable demo signal, and exercises
+the time-varying / effective-dated COGS path built in `metrics_calculator`.
+**Mechanism notes:** the anomaly lives **only** in `cogs_config` (a config table) — `gen_reference`'s
+`cogs_ref` is untouched — so **the committed snapshot feeds do not change** (only `config/cogs_config.csv`
+gains 3 rows, one per leaf of the unit). The validator builds its leaf roster as a *set*, so the second
+row per leaf is harmless; `metrics_calculator` resolves the latest effective rate ≤ period-end.
+**Supersedes** the earlier observation (BS3 module-1 entry) that "today's data has no plan-vs-actual
+COGS delta."
+
+---
+
 ## Template for new entries
 
 ```

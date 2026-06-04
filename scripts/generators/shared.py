@@ -304,6 +304,15 @@ class Series:
     # Empty => plan == baseline (today's clean behavior). Inherited onto leaves.
     plan_bias: dict = field(default_factory=dict)
 
+    # --- engineered COGS anomaly (optional) ---
+    # When set, canonical_cogs_config_rows emits a SECOND, effective-dated cogs row so
+    # the standing/actual COGS (cogs_config) steps up and diverges from the FLAT plan
+    # cogs_ref — a real plan-vs-actual COGS delta the COGS-spike alert can catch.
+    # Keys: "effective_date" (dt.date) and "multiplier" (float). Empty => no anomaly.
+    # Inherited onto leaves (deliberately NOT cleared in _derive_leaf_series), and the
+    # multiplier applies to each leaf's resolved base_cogs_per_unit.
+    cogs_anomaly: dict = field(default_factory=dict)
+
     def dims(self) -> dict:
         """The dimension columns this series stamps onto every row it produces.
         contract_term_months is stringified ('12'/None) so it round-trips through
@@ -485,6 +494,10 @@ UNITS: list[Series] = [
         base_cpa=72.0, base_cogs_per_unit=31.0, base_margin_per_unit=27.0,
         expected_retention_periods=7.0, base_price_per_unit=58.0,
         has_forecast=False, cogs_comparison_mode="linear_trend", role="stable",
+        # Engineered COGS anomaly: cost-to-serve steps up +22% from mid-May while the
+        # plan stays flat — the demo's standalone COGS-spike / margin-compression beat on
+        # an otherwise-calm online channel (no CPA spike here, so the stories stay distinct).
+        cogs_anomaly={"effective_date": dt.date(2024, 5, 15), "multiplier": 1.22},
     ),
     # 11) Stable — a second Web_Direct unit in PJM (different market), so the hero
     #     channel has a well-behaved sibling and PJM has a digital channel.
@@ -720,6 +733,17 @@ def canonical_cogs_config_rows() -> list[dict]:
             "cogs_comparison_mode": s.cogs_comparison_mode,
             "effective_date": s.effective_history_start.isoformat(),
         })
+        # Engineered anomaly: a second, later-effective row so the standing/actual COGS
+        # steps up mid-period and diverges from the flat plan cogs_ref (gen_reference keeps
+        # plan at base_cogs_per_unit). Resolved per leaf by metrics_calculator's effective-date
+        # logic (latest effective_date ≤ period-end).
+        if s.cogs_anomaly:
+            rows.append({
+                **s.dims(),
+                "cogs_per_unit": round(s.base_cogs_per_unit * s.cogs_anomaly["multiplier"], 2),
+                "cogs_comparison_mode": s.cogs_comparison_mode,
+                "effective_date": s.cogs_anomaly["effective_date"].isoformat(),
+            })
     return rows
 
 

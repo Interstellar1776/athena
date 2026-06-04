@@ -235,7 +235,7 @@ data/snapshots/
 ### Demo narrative arc (reference implementation)
 - **May 1** — on track, minimal alerts. Establishes Athena doesn't cry wolf.
 - **May 8** — Door-to-Door CPA drifting up (Q2 field-sales push: rising commissions/incentives). MEDIUM projection alert, low confidence. Weighted trend shows it emerging.
-- **May 15** — drift continues, a second channel shows volume fallout. Two MEDIUM, one approaching HIGH.
+- **May 15** — drift continues, a second channel shows volume fallout. A separate, otherwise-calm online channel (Online_Partner, ERCOT North) sees its **COGS step up ~22% vs a flat plan** (effective mid-May) — a standalone cost/margin-compression beat distinct from the CPA story. Two MEDIUM, one approaching HIGH.
 - **May 22** — CPA spike confirmed, fallout above threshold, CPA-vs-LTV compression fires. Multiple HIGH alerts. The narrative explains the likely cause, references the relevant operational note, recommends action. This is what Athena caught three weeks before close.
 - **June 8 (post-close)** — the settled month. Books are closed (`period_close_day`) and every in-period gain has landed, so this is May's final actuals: the CPA and fallout that the May-22 projection warned about, now confirmed. Lets the demo contrast pre-close *projection* against final *actuals*. (Fallout, a lagging signal, only fully resolves here — by design, you can't confirm an outcome that hasn't landed.)
 
