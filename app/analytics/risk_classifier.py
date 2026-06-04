@@ -239,7 +239,11 @@ def _fallout(fallout: pd.DataFrame, fallout_proj: pd.DataFrame, thr: dict, perio
 
     med, high = thr["fallout_rate"]["medium"], thr["fallout_rate"]["high"]
     rel = (df["_rate"] - df["_baseline"]) / df["_baseline"].replace(0, np.nan)
-    bandable = df["_baseline"].notna()
+    # Band only with a baseline AND enough data. A current cohort too thin to resolve falls back to the
+    # plain (pending-inflated) rate, labelled `plain_no_data` — that rate is unreliable (≈100% early in
+    # the period), so it must NOT fire an alert (owner: "if not enough data, it shouldn't flag"). It still
+    # carries the plain value + no_data/low confidence in the table for review.
+    bandable = df["_baseline"].notna() & (df["_method"] != "plain_no_data")
     df["risk_level"] = [(_level(r, med, high) if ok else LOW)
                         for r, ok in zip(rel.fillna(0), bandable)]
     df["alert_type"] = "fallout_rate"

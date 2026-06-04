@@ -833,6 +833,36 @@ A monthly-cadence unit with no posted GL had `nan` (a float) in the string field
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core — module: variance_engine, orchestrator)
+
+### variance_engine threads the pure cores once; rich result; fail-loud per stage
+**Chose:** `app/analytics/variance_engine.py` orchestrates the analytics core in a single pass —
+`merge → gl_processor → metrics → projection(volume+fallout) → risk_classifier → findings_builder` —
+calling each **pure** core exactly once and threading its output forward (so gl_states/metrics/projection
+are computed once, not re-derived by each downstream wrapper). `run(data, …)` is pure (no I/O) over
+already-validated data; `run_pipeline(config)` is the single batch entry (`load_data` owns the gate, runs
+first). Returns a **rich result**: findings + assessments + intermediates (metrics, projection, gl_states,
+merged) + a summary. Each stage is wrapped so a failure halts loudly naming the stage (§17); an empty feed
+returns cleanly.
+**Rejected:** Making `report_generator` recompute intermediates (the lean result); letting `run` re-read
+config/re-validate (kept the gate in `data_loader`, §15).
+**Why:** This is the §15 flow realized end-to-end and the entry the proactive batch pipeline will call.
+The per-module `compute_*` wrappers stay (module CLIs + tests depend on them); `variance_engine` is the
+efficient production path. Verified: its findings are **identical** to `findings_builder.compute_findings`
+(proving the single pass wires the cores correctly). Used `gl_completeness` (the pure fn) not `process_gl`
+(the config-reader) so the threaded `snapshot_date` is honored.
+
+### Fallout `plain_no_data` is not banded (surfaced by the orchestrator arc walk)
+**Chose:** In `risk_classifier._fallout`, a current cohort too thin to resolve (method `plain_no_data`,
+< `MIN_RESOLVED_SALES`) is **not banded** — it stays LOW with the plain value + `no_data` confidence.
+**Why:** Walking the pipeline at the **May-1** snapshot exposed ~21 HIGH findings led by a fallout
+"+683%" — the early cohort had no resolved sales, so fallout fell back to the plain (pending-inflated
+≈100%) rate, which was then banded. That is exactly the owner's "if not enough data, it shouldn't flag"
+case; the plain value is still shown for review, but it no longer fires an alert. (Resolved-sub-cohort
+rows with a baseline still band normally — Telemarketing fallout still flags at May-22.)
+
+---
+
 ## Template for new entries
 
 ```
