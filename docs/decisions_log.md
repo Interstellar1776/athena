@@ -863,6 +863,21 @@ rows with a baseline still band normally — Telemarketing fallout still flags a
 
 ---
 
+### Early-period (low-confidence) projections are flagged, not suppressed — de-emphasis is a display concern
+**Chose:** Keep the flag-everything behavior for projection-based alerts even very early in a period
+(e.g. ~10 low-confidence HIGH volume-miss findings at the May-1 snapshot, 1 day elapsed). They are shown
+with `estimated=True` + low confidence; the **UI / narrative layer** de-emphasizes low-confidence findings
+so the feed reads calm.
+**Rejected:** Capping severity until a minimum fraction of the period has elapsed (would make May-1 quiet
+in the analytics layer, but contradicts §6 "low confidence is shown, never suppressed").
+**Why:** §6 is explicit that low confidence is surfaced and the human weights it. The "calm May-1 /
+doesn't cry wolf" demo beat is therefore achieved at the **display** layer (confidence-based ranking /
+de-emphasis), not by suppressing in the classifier. Distinct from the fallout `plain_no_data` case, which
+is genuinely *no* data (not merely low confidence) and so is not banded. Revisit when the report/UI layer
+defines confidence-based display.
+
+---
+
 ## Template for new entries
 
 ```
