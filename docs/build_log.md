@@ -112,3 +112,67 @@ python scripts/generate_snapshots.py --cpa-spike-magnitude 0.30 --no-late-invoic
 ### Deferred to later phases
 No `app/` modules, ingestion validator, analytics, or LLM. `data/processed/`
 and `data/contextual/` are created when the phase that needs them arrives.
+
+> **Note (historical):** the roster table above reflects the *original* taxonomy
+> (Paid Search / Broker / Affiliate, single `actuals.csv`). It was later revised to
+> acquisition-method channels (Web_Direct, Door_to_Door, Telemarketing,
+> Inbound_Call_Center, Direct_Mail, Online_Partner), a two-feed `sales`+`conversions`
+> model, a dimension-free GL ledger, and a roster fan-out — see `decisions_log.md`
+> (BS1 revisions 3–7). This section is kept as the dated original record.
+
+---
+
+## Phase 2 — Ingestion validation  ·  COMPLETE
+
+`app/validation/ingestion_validator.py` — the gate that halts loudly on bad data
+before any analytics. Schema/type/range/join-integrity checks; `PipelineHalt`
+(a `ValueError`) with file+field messages; "facts must have a reference" and
+"every fact tuple exists in the roster" enforced. `build_contracts()` builds the
+validation contract from the config tables. Negative-test fixtures
+(`tests/fixtures/`) confirm halt-on-bad-data; clean snapshots pass through.
+
+---
+
+## Phase 3 — Analytics core  ·  2026-06-04  ·  COMPLETE
+
+The full deterministic analytics pipeline: validated snapshot → ranked §14 findings,
+runnable end-to-end from one entry (`variance_engine.run_pipeline`). **122 tests pass.**
+
+### Modules (`app/analytics/`, built in the §15 order)
+- `data_loader.py` — single I/O owner: read → **ingestion gate** → type/normalize; one
+  dict of frames, identical in snapshot/live mode (data_cleaner folded in).
+- `data_merger.py` — aggregate-then-join facts↔reference↔GL to leaf×period (no row
+  explosion); resolves the dimension-free GL to unit grain.
+- `gl_processor.py` — GL completeness state (open/closed/restated/accrued) + late-invoice
+  flags, keyed to the document month; close = following-month day-8.
+- `metrics_calculator.py` — CPA (monthly/T3M/T12M, unit grain), COGS (effective-dated,
+  time-varying), margin, LTV, fallout — each labeled with its method; `is_projectable`.
+- `projection_engine.py` — period-end **volume** projection (linear + trailing-21-day
+  cumulative regression) and **proactive fallout** (resolved-sub-cohort, lag-corrected);
+  current period only.
+- `risk_classifier.py` — scores **every** metric × period × grain HIGH/MEDIUM/LOW/INFO over
+  a 6-month window; magnitude-only severity + orthogonal `estimated`; the §11 alert stack;
+  thresholds in `system_config.yaml`.
+- `findings_builder.py` — rolls non-LOW assessments into §14 findings (unit-aggregate headline,
+  leaf drill-down, one volume finding with both projections); ranks by normalized exceedance.
+- `variance_engine.py` — orchestrator: threads the pure cores **once**; rich result
+  (findings + assessments + intermediates + summary); fail-loud per stage.
+
+### Demo data addition
+- Engineered **COGS anomaly** on Online_Partner ERCOT North (+22% effective mid-May vs a flat
+  plan) so the COGS-spike / margin-compression alerts have signal (only `config/cogs_config.csv`
+  changed; snapshots untouched).
+
+### Verified demo arc (via `variance_engine.run_pipeline`)
+- **CPA spike** HIGH: Door_to_Door North +22.8%, Telemarketing West +28.6% (estimated/gl_partial
+  at May-22 → real at June-8 — the `estimated` flag flips True→False across close).
+- **COGS/margin**: Online_Partner −25% margin compression HIGH from mid-May.
+- **Fallout**: Telemarketing proactively +50–106% at May-22 (resolved sub-cohort) → HIGH confirmed
+  at June-8.
+- **Restatement**: late-April accrued invoice surfaces as an update (+7.8% CPA impact).
+- Calibration prevents crying wolf: pending/`no_data` fallout not banded, first-run volume flagged
+  low-confidence, exceedance-normalized ranking.
+
+### Deferred (see `open_questions.md`)
+First-run launch-month plan pro-rating; true post-close restatement data; confidence-aware display
+de-emphasis (the "calm May-1" beat is a display-layer concern, per §6); positional `finding_id`.

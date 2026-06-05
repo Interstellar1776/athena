@@ -15,17 +15,23 @@ The retrieval corpus (operational notes + GL descriptions) is small and highly s
 ## 🟡 LLM call count / cost / latency per batch run
 Not yet characterized. How many LLM calls does one batch run make — one per HIGH finding? One batched call for all findings? This drives both cost (the pitch claims "low cost") and latency (affects whether the feed feels live). Estimate during Phase 4 once the narrative call exists. Batching all findings into one structured call is likely cheaper and more coherent — test it.
 
-## 🟡 CPA-vs-LTV compression — which CPA basis does it evaluate? (Phase 3)
-§11 defines the compression alert on **trailing-12-month** CPA (`T12M CPA > % of
-LTV`). But T12M is dominated by a year of history, so a single month's spike
-barely moves it: in the Phase-1 demo data the hero's T12M/LTV sits at ~0.76 (a
-rising *watch*) and will not cross the 0.80 line from the May event alone, even
-though in-month economics are clearly compressed (May CPA ≈ 0.96 of LTV) and a
-trailing-3-month basis would cross cleanly. Decide in Phase 3: evaluate
-compression on trailing-3-month CPA (responsive, fires at May-22, stays calm at
-May-1) and/or keep T12M as a separate slow-burn unit-economics signal — and if
-the former, update the §11 wording (a [LOCKED] item, so revise deliberately).
-The Phase-1 data supports either direction; no regeneration needed.
+## ✅ RESOLVED (Phase 3) — CPA-vs-LTV compression basis → trailing-3-month
+Compression now evaluates on **trailing-3-month** CPA (responsive — fires at May-22, calm at May-1);
+the hard inversion stays on **T12M**. §11 wording revised. See `decisions_log.md` (BS3 module 3).
+
+## 🟢 Deferred from Build Sequence 3 (analytics core) — display/data refinements, not blocking
+- **First-run launch-month plan pro-rating.** A mid-period launch (e.g. Telemarketing West, live May-15)
+  has a *full-month* plan but partial actuals, so its `volume_miss` is overstated (~−76%). Flagged with
+  `first_run` + low confidence today (flag-don't-suppress); the honest fix is pro-rating the launch-month
+  plan in `gen_reference`. (Decided generator-side, deferred.)
+- **True post-close restatement data.** The engineered May true-up posts June-6 (before the June-8 close),
+  so it reads `accrued`, not `restated`; the restatement *alert* is implemented but dormant until the
+  generator posts a true-up *after* close. The late-April **accrued** update does surface.
+- **Confidence-aware display / ranking.** Decided (BS3): low-confidence early-period projections stay
+  flagged (§6 never-suppress); the "calm May-1" beat is achieved by **display-layer de-emphasis**, to be
+  defined when the report/UI is built. Ranking within a severity is by exceedance only (not confidence).
+- **`finding_id` is positional** (re-rank renumbers) — fine for a stateless feed; a stable hash id is an
+  option if findings need tracking across runs.
 
 ## 🟡 Conversational query router — how does it decide which module to call? (Phase 8)
 Mode 2's hardest part. Does the LLM pick from a fixed menu of analytics functions (tool/function-calling style), or does it generate a structured query that Python validates and runs? The first is simpler and safer; the second is more flexible and riskier. Lean simple first. This is the most experimental part of the system — don't let a pitch demo depend on it until proven.
