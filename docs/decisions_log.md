@@ -339,6 +339,545 @@ unchanged.
 
 ---
 
+## 2026 — Build Sequence 3 (analytics core)
+
+### data_loader is the single I/O owner: read → gate → type, one structure for both modes
+**Chose:** `app/analytics/data_loader.py` reads the raw files once (as strings), runs the
+ingestion validator and **halts loudly on bad data before returning**, then types/normalizes
+and hands back one dict of dataframes — identical in snapshot or live mode. Config tables are
+read once and reused to build the validation contract (extracted `build_contracts()` from the
+validator). Dates parse with `errors="raise"` (never a silent `NaT`); dimension keys stay
+**canonical strings** (`contract_term_months` = `"12"`/`""`, never `12.0`/`"nan"`).
+**Rejected:** A passthrough loader with validation wired as a separate downstream step;
+coercing dates silently; leaving keys as pandas-inferred floats.
+**Why:** "Never analyze unvalidated data" is a standing rule, so the gate belongs at the mouth
+of the pipeline. String-native dimension keys make every fact↔reference↔config join match
+byte-for-byte (a float `12.0` key silently fails to join an M2M `""`), and one disk read keeps
+config from being loaded twice.
+
+### data_merger aggregates actuals to leaf×period, then joins plan 1:1 (never record-level)
+**Chose:** Roll sales/conversions up to **leaf × period**, then 1:1 left-join the monthly plan;
+GL is **resolved only** (geography attached at unit grain, overhead filtered out) — its period
+bucketing/completeness is `gl_processor`'s job. Forecast rides in parallel `*_ref_fc` columns;
+fallout is reconciled on `customer_key`. Conversions are counted on both axes (`landed` by
+conversion_date for CPA/volume; `cohort` by sale month).
+**Rejected:** Record-level join of facts to the monthly plan (multiplies each actual by 3–13
+monthly plan rows — a row explosion); aggregating GL in the merger.
+**Why:** `reference_data` is a monthly target and the feeds carry a year of trailing history;
+aggregate-then-join is how a real variance pipeline avoids the explosion and hands the metrics
+layer clean comparison frames at the grain it needs.
+
+### gl_processor: completeness keyed to the document month, close = following-month day 8
+**Chose:** `period = document_date` month — **spend ties to the month it belongs to**. Close
+date = day `period_close_day` (8) of the *following* month (May closes June 8). State per
+`(unit, period)`, first match: `open` → `accrued` → `restated` → `closed`. Late invoices
+(posting month ≠ document month) are flagged in dedicated columns, attributed to the document
+month, **independent of the state label** (so both engineered invoices are always detected).
+**Rejected:** Period by posting date; the literal spec order `restated → accrued` (leaves
+`accrued` unreachable and mislabels the late-April invoice).
+**Why:** A cost belongs to the period it documents to, not when it happened to post; checking
+`accrued` before `restated` makes a prior-month invoice landing in the open month read as
+`accrued` (the §10 intent). Close on the following-month day-8 matches the post-close June-8
+snapshot and the conversion-lag SLA.
+**Status (open):** under `current_period = snapshot month`, the post-close May true-up reads
+`accrued` (it posted in the current month) rather than `restated`; labeling it `restated` would
+require treating a post-close snapshot as *settling the prior month*. Deferred until the output
+is reviewed against the demo.
+
+### Fallout is shown raw, as computed at each snapshot — not lag-filtered
+**Chose:** Report fallout exactly as it stands in each cut: `unmatched` = submissions with no
+matching gain *yet*, pending (not-yet-landed) cohorts included. No "resolved-cohort" filter.
+**Rejected:** Holding back cohorts younger than the conversion lag (or the period close) from
+the displayed fallout.
+**Why:** The demo's value is *watching the fallout signal build* — raw unmatched climbs across
+the pre-close snapshots (≈21.9k → 22.4k → 22.8k → 23.4k) and partially settles post-close as
+lagged gains land; that lagging behavior **is** the story, and suppressing it defeats the point.
+Consistent with §9 (never blank — label/contextualize, don't hide): the lag/confidence caveat
+belongs to the narrative + risk layers, not to dropping the number. Supersedes the earlier
+(un-built) intent to exclude pending cohorts from the fallout rate.
+
+### CPA stays unit-grain; volume/margin stay leaf-grain (roll up to join)
+**Chose:** Keep CPA at the `(entity, region, segment)` unit grain (where GL resolves) and
+volume/fallout/margin at leaf grain; roll leaves up to the unit when a join needs it, rather
+than forcing one shared grain.
+**Rejected:** Coercing everything to a single grain in the merger.
+**Why:** GL carries no product/customer dimensions, so unit-grain CPA is the honest grain;
+forcing a leaf grain would fabricate a precision the ledger doesn't have. Findings can carry a
+different grain per metric (§14).
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — planning decisions, pre-implementation)
+
+> These were settled in a planning conversation before writing `metrics_calculator` and the
+> downstream modules. They refine several **[LOCKED]** items in `athena_context.md` (§6 §10 §11
+> §14 §15); each refinement is called out so the change is deliberate, not silent.
+
+### Period lifecycle: compute forever, label-and-freeze at close
+**Chose:** A period is **always computable** — closing is a *label*, not a removal. CPA (and every
+metric) recomputes whenever new spend lands, in any period, at any snapshot. Lifecycle
+`open → closed → (restated)`, with `accrued` as the cross-period-posting marker. `open` = current
+month before close day (the proactive, projected zone); `closed` = past close, no new spend
+(authoritative; freeze a settled reference; no projection); `restated` = past close, new spend
+appeared (recompute, flag delta vs. the frozen reference; no projection); `accrued` = document date
+prior period, posting date current. Close day = `period_close_day` (8).
+**Rejected:** Treating a closed period as frozen/uncomputable (the implicit prior model, where
+"past close" meant the metric stopped moving); deriving completeness only from posting dates.
+**Why:** Live mode is the real test — a **March snapshot** must naturally show Jan/Feb `closed` and
+March `open` with no special-casing, and a restatement must be a *recompute against a baseline*,
+not a frozen blank. "Compute forever, label the trust level" gives that for free and keeps the
+never-blank principle (§9) intact: a settled period still has live numbers, just authoritative ones.
+
+### Accrued vs. restated: keep `accrued`-before-`restated`; the June-8 May true-up is `accrued`
+**Chose:** Keep the built `gl_processor` behavior — evaluate `open → accrued → restated → closed`,
+`accrued` **before** `restated`. The May true-up (May document date, **posts June 6**), seen at the
+**June-8 snapshot**, reads **`accrued`**.
+**Rejected:** A `restated`-first ordering / labeling the true-up `restated` (briefly drafted on the
+strength of "June-8 settles May," then reversed by the owner).
+**Why (owner's decision + the engineering case for it):** The true-up **posts June 6, which is
+before May's close (June 8 = `period_close_day` of the following month).** It therefore arrived
+*within* May's settlement window — a prior-period (May) cost landing in the open current month
+(June), which is the textbook definition of an **accrual**, not a restatement. A `restated` entry is
+one that posts **after** a period's close (a genuinely settled month changing). Checking `accrued`
+first yields the accounting-correct label here without special-casing. This resolves the earlier
+deferred *Status (open)* note on the BS3 `gl_processor` entry above in favor of the existing code —
+**no `gl_processor` change is required.**
+**My recommendation (noted for later, not blocking):** two refinements worth considering when
+`gl_processor` is next touched — (a) make the `restated` test "posting_date **after** `close(P)`"
+rather than "posting *month* > document *month*", so the discriminator is the close boundary itself,
+not a calendar-month proxy; and (b) if the demo specifically wants to *exercise* a `restated` state,
+move the generated true-up's posting date to **after June 8** (it currently posts June 6) — that's a
+one-line `generate_snapshots.py` change, separate from processor logic. Both are deferred; today's
+decision keeps the current code and data as-is.
+
+### Frozen close reference
+**Chose:** On the transition to `closed`, persist the period's settled metric values as the
+baseline the **Period Restatement** alert measures against; a later `restated` recompute compares to
+*that frozen reference*, not to a re-derived figure.
+**Why:** "Spend changed after close by X%" is only meaningful against the number that was
+authoritative *at* close. Re-deriving the baseline each run would let the reference drift and make a
+restatement undetectable. A persisted baseline is the honest anchor.
+
+### Projectability contract: resolved once, consumed downstream
+**Chose:** `metrics_calculator` resolves `gl_completeness_state` once and emits a boolean
+`is_projectable` (true **iff** `open`). `projection_engine` reads it and **never re-derives** the
+state.
+**Rejected:** Letting `projection_engine` independently re-evaluate completeness/close logic.
+**Why:** One owner of the state means the projection layer can't disagree with the metric layer
+about whether a period is open — a single source of truth for "is this still in the proactive zone."
+Projection on a closed/restated period is meaningless (it's settled), so the flag also enforces §6.
+
+### Weighted projection = trailing-21-day linear regression
+**Chose:** The weighted projection is a **least-squares line fit over the trailing 21 days** of
+daily values, slope extrapolated to period end; falls back to **all available data** when the
+period is younger than 21 days.
+**Rejected:** The earlier "weighted recent average" / "weight recent days more heavily than older."
+**Why:** A weighted average still answers "what's the level lately," not "where is the trend
+heading" — and the proactive signal is fundamentally about **trajectory**. A regression slope
+captures direction directly and degrades gracefully on short windows. Supersedes §6's prior wording
+(a [LOCKED] item, revised deliberately).
+
+### LTV hierarchy: calculated first, plan as fallback
+**Chose:** Resolve LTV in this order — **calculate first, fall back to plan**: (1)
+`calculated_retention` (primary) = trailing-3-month avg margin × `expected_retention_periods` (needs
+≥3 months history); (2) `calculated_term` = margin × `contract_term_months`, **only when retention
+is unconfigured** and therefore **Term-only** (no term for Month_to_Month); (3) `plan_input`
+(`ltv_ref`) fallback, including first run; (4) `unresolved` — deferred, labeled rather than blanked,
+when even plan is unavailable (a brand-new segment with no plan row).
+**Rejected:** A plan-first chain (briefly drafted, then reversed by the owner); dropping a value
+entirely when no method applies.
+**Why:** LTV is a *calculated* metric by design (§10 — `avg_margin_per_period ×
+expected_retention_periods`); the plan figure is the safety net, not the headline. When the inputs
+exist, the computed value is the more truthful one and should lead; plan only stands in when history
+or config is missing. `calculated_term` is a deliberate stopgap for Term segments lacking retention
+config; it cannot serve Month_to_Month, so the chain falls to `plan_input` and finally an explicit
+`unresolved` label (§9). This **preserves** the original §10 "Calculated (primary)" direction
+(detailing its method tiers), rather than reversing it.
+
+### Pro-rating: per-unit calendar_days (default) vs business_days
+**Chose:** Plan pro-rating for partial periods is a **per-unit switch** — `calendar_days` (default)
+or `business_days` — owned by `projection_engine`.
+**Why:** Reaffirms §6; recorded here as a BS3 planning decision so the per-unit (not global) grain
+is unambiguous when `projection_engine` is built. Weekday-only channels (the generator already
+zeroes weekend activity) pro-rate on business days; everyday operations on calendar days.
+
+### Severity and the estimated flag are orthogonal
+**Chose:** `risk_level` (HIGH/MEDIUM/LOW/INFO) reflects **magnitude only**. A separate boolean
+`estimated` carries data confidence — true for any non-`real` metric method or any open-period
+projection. The two never interact: an **estimated HIGH stays HIGH**; low confidence is shown via
+`estimated` + the confidence indicator, never by downgrading severity.
+**Rejected:** Folding confidence into severity (e.g. demoting an estimated HIGH to MEDIUM).
+**Why:** Conflating "how bad" with "how sure" hides real risk — a HIGH variance built on an
+extrapolated CPA is still a HIGH variance worth surfacing. Keeping the axes separate lets the
+narrative say "serious, and here's how confident we are" instead of silently muting the alarm,
+which is exactly the never-cry-wolf-but-never-go-quiet balance (§4, §9).
+
+### Findings grain is metric-driven; never collapsed
+**Chose:** Each finding keeps the honest grain of its metric — CPA / CPA-vs-LTV / projection at
+**unit** `(entity, region, segment)`; margin / fallout at **leaf** (full hierarchy). One finding
+per flagged condition (a segment with three issues → three findings). The feed rolls up to the unit
+for *display* only; the stored findings retain native grain.
+**Rejected:** Coercing all findings to one shared grain; merging a segment's issues into one row.
+**Why:** GL carries no product/customer dimensions, so a leaf-grain CPA would fabricate precision
+the ledger doesn't have (consistent with the BS3 merger decision); conversely margin/fallout *are*
+leaf-real and shouldn't be blurred up. Per-condition findings keep each issue independently
+explainable and rankable by the LLM.
+
+### metrics_calculator internal order: COGS → margin → LTV → CPA → fallout
+**Chose:** Compute in dependency order — COGS first, then margin (needs COGS), then LTV
+(`calculated_retention` needs margin), then CPA, then fallout. Every trailing-average path needs
+≥3 months of history or falls back to plan, labeled.
+**Why:** A fixed order means each metric's inputs already exist when it runs — no forward
+references, no recomputation. Documented now so module 1's structure is settled before code.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — module 1: metrics_calculator, build-time)
+
+> Surfaced while building `app/analytics/metrics_calculator.py` and walking the demo-arc snapshots.
+> Each refines a recently-recorded planning decision; the reasoning is here, the docs (§6/§10/§14)
+> updated to match.
+
+### `is_projectable` is a calendar fact (current period), not `gl_completeness_state == "open"`
+**Chose:** `is_projectable = (period == the snapshot's month)` — the single period still accumulating
+toward its end — emitted identically for the unit (CPA) and leaf (economics) frames.
+**Rejected:** The planning decision's literal `is_projectable = (gl_completeness_state == "open")`.
+**Why:** The CLI walk showed `gl_processor` marks a **prior** month still inside its settlement grace
+as `open` (e.g. April at a May-1 snapshot, since April closes May 8). That month is *over* — projecting
+it to "period end" is meaningless. Conversely a current-month unit with **no GL posted yet** has
+`state == NaN` but is plainly projectable. So GL-completeness (a spend-settlement concept that spans
+months) is the wrong basis for projectability (a "is this period still open" concept). The calendar
+test captures the intent exactly and makes unit and leaf agree. Supersedes the planning wording in
+§6/§14.
+
+### `unit_economics_flag` is dropped from metrics_calculator (risk_classifier owns it)
+**Chose:** metrics_calculator does **not** emit `unit_economics_flag`; it supplies the inputs (T12M CPA
+in the `cpa` frame, LTV in `economics`). `risk_classifier` computes the §11 CPA-vs-LTV / unit-economics
+inversion alerts where the thresholds live.
+**Rejected:** Computing the literal §14 `CPA + COGS_per_unit > price_per_unit` in metrics.
+**Why:** That literal form is dimensionally inconsistent — CPA is **per-acquisition** (one-time per
+customer, $65–161 in the data) while price/COGS are **per-period unit** rates ($58–94) — so it fired on
+~90% of unit×periods including calm baselines (cry-wolf). Amortized to a common lifetime basis it reduces
+algebraically to `CPA > LTV`, i.e. it *is* the CPA-vs-LTV inversion. So the per-period flag is either
+broken or redundant; the honest home for the inversion is the threshold layer. §14 keeps the field,
+populated downstream.
+
+### CPA open-period label named `gl_partial` (not `gl_extrapolated`); `cogs_method` gains `actual`
+**Chose:** The open-period to-date CPA label is **`gl_partial`**; the time-varying current COGS label is
+**`actual`** (added to the `cogs_method` enum).
+**Why:** With full-period scaling owned by `projection_engine` (planning decision 1), the metrics-layer
+open value is the period-to-date figure, not an extrapolation — `gl_extrapolated` was a misnomer.
+`actual` distinguishes the current effective COGS rate from the `plan_input` / `trailing_avg` / `estimated`
+fallbacks now that COGS is time-varying. Both reconcile §14's enums with the implemented behavior.
+
+### Observation (not a change): today's data has no plan-vs-actual COGS delta
+**Noted:** the time-varying/effective-dated COGS machinery is built and correct, but on the current
+snapshots `cogs_actual == cogs_plan` everywhere and every row resolves to `actual`. The leaves with later
+`effective_date`s (Direct_Mail West 2024-03, Telemarketing West 2024-05-15) are **new segments** whose
+periods all begin at/after their effective date, so no period falls back to `plan_input`, and config==plan
+by construction (the revision-6 invariant). The COGS-delta path will exercise the moment the generator
+emits a rate change that diverges from a previously-set plan — a future generator tweak, not a code gap.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — module 2: projection_engine)
+
+> Decided in planning + confirmed while building `app/analytics/projection_engine.py`. Refines the
+> §6/§11/§14 projection model (a [LOCKED] area), so the changes are deliberate; docs updated to match.
+
+### Projection differs by metric: volume projects, CPA does not
+**Chose:** Project **volume** (activations/submissions) two ways — linear + trailing-21-day cumulative
+regression. **Do not project CPA**: surface its **current run rate** (spend-to-date CPA, already
+`cpa_monthly`/`gl_partial`) paired with a **month-end estimate from prior months** (trailing CPA,
+already `cpa_t3m`/`trailing_avg`) or a **no-history** state.
+**Rejected:** Projecting every metric "two ways" (the original §6 reading), incl. a daily regression on CPA.
+**Why (owner's call + engineering case):** CPA is ledger-driven and the ledger posts on an invoice
+cadence (weekly/monthly), not daily — there is no smooth daily CPA signal to regress, and a regression
+on spiky invoice data would track invoice timing, not economics. Volume *is* a smooth daily signal, so
+it projects cleanly. For CPA the honest proactive signal is *current run-rate vs the historical norm*
+(e.g. hero May run-rate ~147 vs historical ~117), which needs no forward projection — you can't project
+ledger spend you don't yet have. Supersedes the §6/§11/§14 "both methods for everything" wording.
+
+### Weighted projection regresses the cumulative series, not daily increments
+**Chose:** Fit the trailing-21-day least-squares line to the **cumulative** daily series; slope = recent
+per-day run-rate; `proj = to_date + slope × days_remaining`. Fall back to all-available days (<21
+elapsed), then to the linear line (<2 points / degenerate).
+**Rejected:** Regressing daily *increments* (the literal "21 daily values").
+**Why:** Cumulative is monotonic and well-behaved even when daily activity is bursty; its OLS slope is
+≥0, so the projection can never fall below the to-date value. The linear line is always computed as the
+simple, always-works backup (owner: "a backup to always have").
+
+### projection_engine emits values; risk_classifier computes variances
+**Chose:** Output projected values + plan targets (full-period `*_plan_full` and pro-rated
+`*_plan_prorated`); `risk_classifier` computes every `variance_pct` and assigns risk.
+**Why:** Same separation used for `unit_economics_flag` — values vs. thresholds live in different modules.
+
+### Pro-rating default is calendar_days; activations correctly land every day
+**Chose:** `pro_rate_default` (`calendar_days`) drives the day-count basis for all units; `business_days`
+is a built-but-unmapped per-unit seam (no per-unit config table yet).
+**Why:** Even a weekday-only *submission* channel **converts on weekends** (a weekday sale converts ~2
+days later, landing any day — verified: Door_to_Door has Sat/Sun conversions), so `calendar_days` is
+correct for the **activation** projection. `business_days` matters mainly for *submissions* of
+weekday-only channels — deferred until a per-unit pro-rate config exists.
+
+### projection_engine does not emit a CPA frame (CPA paired downstream)
+**Chose:** Output only the leaf-grain `volume_projection` frame. CPA's run-rate + month-end estimate are
+read from the metrics `cpa` frame and paired by `findings_builder`, not recomputed here.
+**Why:** Keeps "no CPA math in projection" literal and avoids duplicating values metrics already owns.
+**Status:** Flagged for confirmation at plan approval; approved.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — engineered COGS anomaly)
+
+### A COGS anomaly added to the generator (Online_Partner ERCOT North)
+**Chose:** Engineer a standalone COGS-spike / margin-compression beat by adding a `cogs_anomaly`
+field to the `Series` roster (`scripts/generators/shared.py`) and emitting a **second,
+effective-dated `cogs_config` row** for the target unit in `canonical_cogs_config_rows()`. Target:
+**Online_Partner, ERCOT North** (a calm channel with *no* CPA spike, and with a price so margin is
+computed) — actual COGS steps **+22%** (31.0 → 37.82) effective **2024-05-15**, while the plan
+`cogs_ref` stays flat at 31.0. So May reads `cogs_actual 37.82` vs `cogs_plan 31.0` (+22%) and
+margin compresses ~25% (27.0 → 20.24); April and prior stay calm.
+**Rejected:** Putting it on Web_Direct (the docs' "online advertising" channel — the user excluded
+it) or compounding it onto a CPA-spike segment (Door_to_Door / Telemarketing) — keeping the COGS and
+CPA stories on *separate* segments so the narrative can attribute each cleanly.
+**Why:** Until now `cogs_actual == cogs_plan` everywhere (the revision-6 one-source invariant), so the
+entire COGS alert family + `cogs_comparison_mode` machinery had **no signal** to fire on. This gives
+the COGS-spike alert (and a margin-compression beat) a real, isolatable demo signal, and exercises
+the time-varying / effective-dated COGS path built in `metrics_calculator`.
+**Mechanism notes:** the anomaly lives **only** in `cogs_config` (a config table) — `gen_reference`'s
+`cogs_ref` is untouched — so **the committed snapshot feeds do not change** (only `config/cogs_config.csv`
+gains 3 rows, one per leaf of the unit). The validator builds its leaf roster as a *set*, so the second
+row per leaf is harmless; `metrics_calculator` resolves the latest effective rate ≤ period-end.
+**Supersedes** the earlier observation (BS3 module-1 entry) that "today's data has no plan-vs-actual
+COGS delta."
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — module 3: risk_classifier)
+
+> Decided in planning + confirmed while building `app/analytics/risk_classifier.py` and walking the
+> arc. Thresholds live in `config/system_config.yaml`; doc §11/§14 reconciled.
+
+### Score every metric into one normalized assessment table (LOW included)
+**Chose:** Emit one row per metric × period × grain — *every* metric gets a risk level (HIGH/MEDIUM/
+LOW/INFO), including LOW/on-track. The feed filters; nothing is suppressed.
+**Rejected:** Emitting only threshold crossings.
+**Why:** The owner wants full transparency / browsability ("see or double-click into the data"). A
+complete, uniformly-shaped assessment table also gives `findings_builder` everything it needs and lets
+the UI show "what's off" while still letting a user inspect the calm metrics behind it.
+
+### Finest honest grain; per-event roll-up deferred to findings_builder
+**Chose:** Classify at the finest grain each metric's data supports — **leaf** for COGS/margin/fallout/
+volume, **unit** for CPA & CPA-vs-LTV (GL only resolves to unit). Each row carries `group_key`
+(entity|region|segment); the roll-up of a multi-leaf event into one feed alert with leaf drill-down is
+`findings_builder`'s job.
+**Why:** Matches the metric-driven-grain rule and the owner's "most granular calculation possible," while
+keeping the feed digestible (one COGS-anomaly event = 3 leaf rows → one rolled-up alert downstream).
+
+### CPA-vs-LTV: compression on T3M, inversion on T12M
+**Chose:** Compression (MEDIUM, ≤ MEDIUM cap) on **trailing-3-month** CPA / LTV ≥ 0.80; inversion (HIGH)
+on **trailing-12-month** CPA / LTV ≥ 1.0.
+**Rejected:** Compression on T12M (the prior §11 wording).
+**Why:** Verified in the data — Door_to_Door North sits at **T3M/LTV = 0.846** (crosses, fires) but
+**T12M/LTV = 0.766** (a year of history swamps one month's spike, never crosses). T3M is the responsive
+basis the proactive signal needs; T12M is the slow-burn unit-economics guardrail. Resolves the open
+question; supersedes a [LOCKED] §11 line (revised deliberately).
+
+### Fallout fires on degradation vs the channel's OWN trailing baseline (resolved cohorts only)
+**Chose:** Band fallout on the **relative rise over a trailing-3-month (prior) baseline** per leaf,
+**only for resolved cohorts**; threshold MEDIUM 0.40 / HIGH 0.70 (above monthly noise ~20–45%).
+**Rejected:** Absolute fallout threshold (every channel's resolved rate is similar ~13–20% — Telemarketing
+only stands out *relative to its own history*); fallout-vs-plan (every channel runs ~45–110% above its
+optimistic plan → fires everywhere = cry-wolf); banding pending cohorts (inflated by not-yet-landed
+conversions — a lagging signal that only resolves post-close, §8).
+**Why:** The engineered fallout channel (Telemarketing) degrades to **+85–139% above its own trailing
+norm** and fires HIGH **at June-8 when the May cohort resolves** — exactly the lagging-signal beat — while
+calm channels stay LOW. A pending current cohort is scored LOW (with the flag) until it settles, so Athena
+never cries wolf on an unresolved outcome.
+
+### First-run volume_miss is not a hard alert
+**Chose:** A leaf with no prior-period history (launched this period) is **not banded** for volume_miss —
+it stays LOW with a `first_run` note.
+**Why:** A mid-period launch (e.g. Telemarketing West, live May 15) has a *full-month* plan but only
+post-launch actuals, so the projected "miss" (~−76%) is a spurious comparison, not a real shortfall (§9 —
+first run is labeled, never alarmed). Without this guard it fired a false HIGH.
+
+### Severity is magnitude-only; estimated flips real across close (the honesty beat)
+**Chose:** Risk level = magnitude only; a separate `estimated` boolean (non-`real`/`calculated` method or
+any projection). An **estimated HIGH stays HIGH**.
+**Why (and the payoff):** At **May-22** the CPA spikes are HIGH **and `estimated=True`** (open-period
+`gl_partial`); at **June-8** the same spikes are HIGH **and `estimated=False`** (settled `real`). Athena
+warns three weeks early *and labels exactly how sure it is* — never muting the alarm for low confidence.
+
+### Restatement / frozen_reference derived statelessly (Option B)
+**Chose:** Per the owner's Option B — `frozen_reference` = period CPA on spend posted on/before close;
+`restatement_delta` = current − frozen = `late_invoice_amount / conversions`. Computed each run from
+`gl_states`; no persistence.
+**Why:** Keeps the whole pipeline stateless/recomputed-every-run (the owner's preference) and still
+surfaces the late-April **accrued** update (Door_to_Door North, +7.8% CPA impact, MEDIUM) in-window.
+**Status (open):** the demo has no *post-close* restatement (the May true-up posts June 6, before the
+June-8 close → `accrued`, not `restated`); the restatement state is exercised only if the generator posts
+a true-up after close. And the COGS-spike `linear_trend` baseline currently includes the current month
+(dampens a fresh step to MEDIUM, ~+13.7% vs trailing, while margin-compression carries the HIGH); a
+prior-period baseline is a noted refinement.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — proactive fallout + flag-don't-suppress)
+
+### Fallout is projected proactively from the resolved sub-cohort (lag-corrected)
+**Chose:** Make the current period's fallout **proactive** — `projection_engine.project_fallout`
+estimates it from the **resolved sub-cohort** (sales older than the conversion-lag SLA, whose outcome
+is final); `risk_classifier` bands that vs the channel's trailing-3-month baseline. Confidence scales
+with the resolved fraction; below `MIN_RESOLVED_SALES` it falls back to the plain rate, labeled
+`plain_no_data` / `no_data`.
+**Rejected:** (a) Banding **only resolved cohorts** (the prior build) — makes fallout purely *lagging*
+(fires at June-8), which "can't be proactive" (owner). (b) The owner's first instinct, **regress the
+numerator and denominator** to period-end and divide — the **numerator (`unmatched`) is lag-biased**: a
+sale from the last few days simply hasn't had time to convert, so cumulative `unmatched` is inflated at
+the very edge a regression leans on → it would *over-project* fallout (cry-wolf, the opposite failure).
+**Why:** The resolved sub-cohort is lag-free and available early. Verified: at **May-22** Telemarightl
+flags **+50–106% over its own baseline (MEDIUM/HIGH), with high confidence, weeks before close**, then
+escalates as the cohort resolves — exactly the proactive signal. This is the right answer to the owner's
+"it can't be proactive if it can't use a trailing average — get this one right."
+**Status (open):** at *leaf* grain the resolved sub-cohort is small and noisier (a calm leaf can show a
+spurious +60%); confidence is keyed to the resolved *fraction*, not the sample *count* — folding sample
+size into confidence is a noted refinement.
+
+### Flag-don't-suppress (with a confidence label) replaces silent LOW-suppression
+**Chose:** Per the owner — *flag everything at its magnitude with an explicit confidence/`estimated`
+label, and refine the structural fixes later*, rather than silently dropping uncertain signals to LOW.
+So: pending/projected fallout is **flagged** (carrying its confidence), and a first-run leaf's volume
+miss is **flagged with `first_run` + low confidence** instead of suppressed.
+**Rejected:** Suppressing first-run volume_miss and pending fallout to LOW (the prior build).
+**Why:** The owner would rather *see every potential miss and review it* than have Athena hide one. This
+stays honest about "never cry wolf" by carrying the uncertainty in the **label**, not by hiding the row.
+**Status (open):** the first-run volume_miss comparison is still structurally imperfect (full-month plan
+vs partial-month actuals → an overstated −76%); pro-rating the launch-month plan is the deferred fix.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — module 4: findings_builder)
+
+### Non-LOW become §14 findings; the assessment table is the browse layer
+**Chose:** `findings_builder` turns only the **non-LOW** (HIGH/MEDIUM/INFO) assessments into §14
+structured findings (the feed); `compute_findings` returns `{"findings", "assessments"}` so the full
+scored table (incl. every LOW/on-track row) rides alongside as the drill-down/browse source.
+**Rejected:** A heavy §14 finding per metric incl. LOW (hundreds of objects the feed/narrative would
+just re-filter).
+**Why:** Keeps the feed digestible while preserving "see everything" — it lives in the table, not as
+findings. The §14 finding is the contract the LLM/report consume; flooding it with on-track rows would
+bury the signal and bloat the narrative inputs.
+
+### One finding per (alert_type, unit, period); leaves nested for drill-down
+**Chose:** Roll leaf-grain alerts up to the unit — max severity, the **worst leaf** as the headline —
+nesting every leaf under `supporting_metrics.leaves`. The COGS anomaly is **one** `cogs_spike` finding
+(3 leaves) + **one** `margin_compression` finding (3 leaves), not six rows.
+**Rejected:** One finding per leaf (repeats one event; noisy feed).
+**Why:** Implements the "calc at leaf, roll up the alert, drill-down to leaves" decision and §14's
+"rolls up to unit for display, native grain retained for drill-down." Worst-leaf headline is
+conservative (surfaces the worst); volume-weighting is an easy alternative if a unit-representative is
+preferred later.
+
+### Feed ranked severity → magnitude → recency; deterministic positional ids
+**Chose:** Order findings by severity (HIGH>MEDIUM>INFO) → |magnitude| → current-period-first → period
+→ unit/alert tie-break; assign `finding_id` `F-001…` in ranked order (deterministic across runs).
+**Why:** Matches the owner's ranking choice and makes the feed reproducible.
+**Status (open):** (a) under flag-don't-suppress, a **first-run** volume_miss (Telemarketing West,
+−76%, low-confidence) ranks high by magnitude and can crowd above genuine HIGHs — a **confidence-aware
+tie-break** (real/high-confidence before estimated/low within a severity) would help, deferred since the
+owner specified severity→magnitude→recency. (b) `finding_id` is positional (re-rank renumbers); a stable
+hash id is a later option if findings must be tracked across runs.
+**Verified:** the feed leads with the demo HIGHs; `estimated` flips **True→False across close** (CPA
+spikes/fallout: estimated warning at May-22 → confirmed real at June-8) — the headline honesty beat.
+
+---
+
+## 2026 — Build Sequence 3 (findings_builder — review refinements)
+
+> Five holes found reviewing the first cut; the owner answered the three judgment ones. All fixed in
+> `findings_builder.py` (no upstream change).
+
+### One volume finding per unit, carrying both projection lines
+**Chose:** Merge `volume_miss_linear` + `volume_miss_weighted` into a single `volume_miss` finding
+holding both `projected_period_end_linear` and `_weighted`; severity from the worse line.
+**Why:** §14 has both projection fields in one finding; two findings double-counted the volume story.
+
+### Headline = unit (volume-weighted) aggregate; severity stays max-leaf
+**Chose:** A rolled finding's headline `actual`/`reference`/`variance` is the **unit aggregate**
+(fallout submission-weighted, volume summed, COGS/margin mean), and the primary metric's context field
+is set to that aggregate so they agree (fixes the worst-leaf-vs-unit-mean mismatch). **Severity and
+selection stay max-leaf** — a leaf-level HIGH still surfaces the unit finding as HIGH (don't-miss); the
+worst leaf is always in `supporting_metrics.leaves`.
+**Rejected:** Worst-leaf as the headline number (a single leaf on a unit-labeled finding); full
+aggregate severity (would let a lone-leaf HIGH drop out of the feed).
+**Why:** The exec sees a true unit-level number, while nothing is missed and the spread is one
+double-click away. **Status (open):** headline value (aggregate) and severity (worst leaf) can differ —
+intentional; flip to aggregate severity if a leaner feed is wanted later.
+
+### Rank by normalized exceedance over each alert's own threshold
+**Chose:** Within a severity band, rank by `magnitude ÷ the crossed threshold` (driven by a single
+`ALERT_SPEC` table), so cpa_spike / cogs / fallout / volume / cpa-ltv are comparable. The CPA-vs-LTV
+ratio is normalized (`ratio ÷ 0.80`), not treated as a raw %.
+**Rejected:** Raw `|variance_pct|` (mixed incomparable scales — the cpa-ltv ratio of ~85 outranked a
+real +22% CPA spike).
+**Why:** Makes the feed order meaningful across alert types. Verified: cpa-ltv compression dropped from
+mid-HIGH-magnitude to its true position (x1.06, just past threshold); the demo HIGHs lead by exceedance.
+**Status (open):** ranking ignores confidence, so a low-confidence **first-run** volume miss can top its
+severity by magnitude — acceptable under flag-don't-suppress (the deferred fix is pro-rating the
+launch-month plan; a confidence-aware tie-break is an alternative).
+
+### Minor: gl_completeness_state nan → None
+A monthly-cadence unit with no posted GL had `nan` (a float) in the string field; now `None`.
+
+---
+
+## 2026 — Build Sequence 3 (analytics core — module: variance_engine, orchestrator)
+
+### variance_engine threads the pure cores once; rich result; fail-loud per stage
+**Chose:** `app/analytics/variance_engine.py` orchestrates the analytics core in a single pass —
+`merge → gl_processor → metrics → projection(volume+fallout) → risk_classifier → findings_builder` —
+calling each **pure** core exactly once and threading its output forward (so gl_states/metrics/projection
+are computed once, not re-derived by each downstream wrapper). `run(data, …)` is pure (no I/O) over
+already-validated data; `run_pipeline(config)` is the single batch entry (`load_data` owns the gate, runs
+first). Returns a **rich result**: findings + assessments + intermediates (metrics, projection, gl_states,
+merged) + a summary. Each stage is wrapped so a failure halts loudly naming the stage (§17); an empty feed
+returns cleanly.
+**Rejected:** Making `report_generator` recompute intermediates (the lean result); letting `run` re-read
+config/re-validate (kept the gate in `data_loader`, §15).
+**Why:** This is the §15 flow realized end-to-end and the entry the proactive batch pipeline will call.
+The per-module `compute_*` wrappers stay (module CLIs + tests depend on them); `variance_engine` is the
+efficient production path. Verified: its findings are **identical** to `findings_builder.compute_findings`
+(proving the single pass wires the cores correctly). Used `gl_completeness` (the pure fn) not `process_gl`
+(the config-reader) so the threaded `snapshot_date` is honored.
+
+### Fallout `plain_no_data` is not banded (surfaced by the orchestrator arc walk)
+**Chose:** In `risk_classifier._fallout`, a current cohort too thin to resolve (method `plain_no_data`,
+< `MIN_RESOLVED_SALES`) is **not banded** — it stays LOW with the plain value + `no_data` confidence.
+**Why:** Walking the pipeline at the **May-1** snapshot exposed ~21 HIGH findings led by a fallout
+"+683%" — the early cohort had no resolved sales, so fallout fell back to the plain (pending-inflated
+≈100%) rate, which was then banded. That is exactly the owner's "if not enough data, it shouldn't flag"
+case; the plain value is still shown for review, but it no longer fires an alert. (Resolved-sub-cohort
+rows with a baseline still band normally — Telemarketing fallout still flags at May-22.)
+
+---
+
+### Early-period (low-confidence) projections are flagged, not suppressed — de-emphasis is a display concern
+**Chose:** Keep the flag-everything behavior for projection-based alerts even very early in a period
+(e.g. ~10 low-confidence HIGH volume-miss findings at the May-1 snapshot, 1 day elapsed). They are shown
+with `estimated=True` + low confidence; the **UI / narrative layer** de-emphasizes low-confidence findings
+so the feed reads calm.
+**Rejected:** Capping severity until a minimum fraction of the period has elapsed (would make May-1 quiet
+in the analytics layer, but contradicts §6 "low confidence is shown, never suppressed").
+**Why:** §6 is explicit that low confidence is surfaced and the human weights it. The "calm May-1 /
+doesn't cry wolf" demo beat is therefore achieved at the **display** layer (confidence-based ranking /
+de-emphasis), not by suppressing in the classifier. Distinct from the fallout `plain_no_data` case, which
+is genuinely *no* data (not merely low confidence) and so is not banded. Revisit when the report/UI layer
+defines confidence-based display.
+
+---
+
 ## Template for new entries
 
 ```
