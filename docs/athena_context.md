@@ -559,17 +559,18 @@ Scheduled trigger
 
 **[LOCKED]**
 
-**Intent:** Same code runs against Anthropic's API in production, local Ollama in dev, or a self-hosted model on-prem — only environment config changes.
+**Intent:** Same code runs against any supported provider — **Anthropic, OpenAI, local Ollama (the dev default), or a self-hosted model on-prem** — through per-provider adapters behind one interface; only environment config changes.
 
 ```python
 # the module never knows which provider it's talking to
 import os
-LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "https://api.anthropic.com/v1/messages")
-LLM_API_KEY  = os.getenv("LLM_API_KEY")
-LLM_MODEL    = os.getenv("LLM_MODEL")        # set per environment — never hardcode a model string
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # ollama (default) | anthropic | openai | …
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")            # base URL override (e.g. local Ollama); per provider
+LLM_API_KEY  = os.getenv("LLM_API_KEY")             # required for cloud providers; unused by local Ollama
+LLM_MODEL    = os.getenv("LLM_MODEL")               # set per environment — never hardcode a model string
 ```
 
-The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The HTTP call pattern is identical across providers; provider-specific behavior lives in config.
+The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The provider is selected by `LLM_PROVIDER`; each provider has a **thin adapter behind one `complete()` interface**. The call patterns are *nearly* identical but differ in shape (Anthropic Messages API vs OpenAI vs Ollama's native API), so provider-specific behavior lives in its adapter — and adding a provider is one more adapter, not a rewrite. Reasoning + the narrative-layer design that consumes this: `the_hallucination_guard.md`.
 
 ---
 

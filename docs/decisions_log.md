@@ -948,9 +948,10 @@ Anthropic/OpenAI paths should use their official SDKs — so genuine per-provide
 for all three provider options. Local-first is free, private, and fast for learning/iteration; the
 `model=` argument means "set it easily now, transfer to a website later" needs only the parameter to
 exist, not the website. §16's "identical HTTP pattern across providers" is faithfully read as *one
-interface over N adapters*, since the providers' APIs differ in shape. §16's locked examples name
-Anthropic / Ollama / self-hosted; **OpenAI is added under the same env-config mechanism** — an
-extension of the example list, not a change to the locked rule.
+interface over N adapters*, since the providers' APIs differ in shape. **§16 was revised** (per user
+direction — OpenAI was intended from the start) to name all three providers (Anthropic, OpenAI,
+Ollama) plus self-hosted, add the `LLM_PROVIDER` selector, and replace "identical HTTP pattern" with
+the one-interface-over-adapters reading; the locked env-config principle itself is unchanged.
 
 ---
 

@@ -154,5 +154,5 @@ model=None)`) over N thin adapters.** Each adapter only has to talk to its vendo
 text; everything upstream is provider-blind. This is the honest reading of §16's "identical HTTP
 pattern across providers" — *nearly* identical, because the Anthropic Messages API, OpenAI's API, and
 Ollama's native API differ in request/response shape, so each gets its own small adapter behind the
-shared seam. (§16's locked examples name Anthropic / Ollama / self-hosted; OpenAI is added here under
-the same env-config mechanism — an extension of the example list, not a change to the locked rule.)
+shared seam. (§16 names all three — Anthropic, OpenAI, Ollama — plus self-hosted, under the same
+env-config mechanism.)
