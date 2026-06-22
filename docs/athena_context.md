@@ -9,6 +9,7 @@
 > - `open_questions.md` — unresolved decisions, kept visible.
 > - `business.md` — pitch, market, GTM, defensibility.
 > - `data_dictionary.md` — every field defined.
+> - `the_hallucination_guard.md` — the narrative layer + number-safety design (expands §4) and its pitch.
 >
 > **[LOCKED]** marks architectural commitments that should not be contradicted without a deliberate revision (and a corresponding entry in `decisions_log.md`). Everything unmarked is current direction, open to refinement.
 

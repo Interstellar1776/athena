@@ -12,6 +12,16 @@ The balance is set in principle (hypothesis, not fact; data always shown — see
 ## 🟡 Does RAG earn its place, or is metadata filtering enough? (Phase 7)
 The retrieval corpus (operational notes + GL descriptions) is small and highly structured — every note already has entity/segment/date. Vector embedding + semantic search may be *worse* and certainly more complex than filtering notes by matching entity/segment/date to the flagged finding. Don't include "RAG" because it's a good pitch word — prove it beats simple filtering on this corpus. Test both in Phase 7. (If semantic search wins on free-text note content, keep it; if not, "intelligent context retrieval" via filtering is still an honest pitch.)
 
+## 🟡 Narrative validator — how strict is the contextual-number provenance check? (Phase 5 / 7)
+The validator's rule is *provenance*, not digit-absence: a number in the narrative is allowed if it
+traces to a Python-filled blank or appears verbatim in the retrieved context (see
+`the_hallucination_guard.md` §4 / `decisions_log.md` BS4). Open: the exact strictness once retrieval
+(step 7) populates `retrieved_context`. Exact substring match, or phrase/window match (a stray "2"
+could coincidentally appear in a note)? Hard-reject a borderline contextual number, or flag-for-review?
+Does the model paraphrase storm dates as words to sidestep the issue, and should we nudge it to? Moot
+in the thin build (empty context → "all numbers must be blanks"); decide empirically when notes are
+attached. Until then the simple all-numbers-are-blanks check is correct.
+
 ## 🟡 LLM call count / cost / latency per batch run
 Not yet characterized. How many LLM calls does one batch run make — one per HIGH finding? One batched call for all findings? This drives both cost (the pitch claims "low cost") and latency (affects whether the feed feels live). Estimate during Phase 4 once the narrative call exists. Batching all findings into one structured call is likely cheaper and more coherent — test it.
 

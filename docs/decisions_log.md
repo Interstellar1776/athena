@@ -878,6 +878,79 @@ defines confidence-based display.
 
 ---
 
+## 2026 — Build Sequence 4 (narrative generation — design, pre-implementation)
+
+> Settled in a teaching/design conversation before writing the first LLM layer. Full reasoning and
+> the pitch framing live in the new `docs/the_hallucination_guard.md`; this is the decision record.
+
+### The narrative layer is the §4 spine realized: LLM owns prose, Python owns numbers AND formatting
+**Chose:** Invert the usual template — the **LLM owns the sentence** (structure, phrasing, which
+finding matters, cause hypothesis, recommendation, tone); **Python owns the numbers and how they
+render** (`$142.00` vs `20.3%` vs a bare count). The model writes named blanks (`{variance_pct}`);
+Python fills them. Numbers must be blanks; qualitative judgment (e.g. acknowledging an estimate) stays
+free — we tell the model `estimated: true` and let it phrase the caveat itself.
+**Rejected:** (a) Let the LLM write numbers and verify them after the fact — parsing numbers out of
+free-form prose ("roughly $150", "a fifth higher") is fuzzy and produces false alarms (violates never
+cry wolf). (b) A Mad-Libs template where Python owns the sentence and the LLM fills words — robotic,
+wastes the model.
+**Why:** Verification becomes a **provenance** check, not a correctness match: every number in the
+final narrative must trace to a source we control — a Python-filled blank, or (once retrieval exists)
+a value appearing *verbatim* in the provided context. A digit tracing to neither is a hallucination.
+This is a mechanical lookup ("where did this number come from?"), not a fuzzy correctness match, so it
+keeps the no-false-positives property — we changed the problem from "is this number right?" to "where
+did it come from?". Owning *formatting* (not just the value) keeps every metric's display consistent.
+**Refinement (the snowstorm case):** a naive "reject any digit" rule is wrong — it would kill a good,
+grounded sentence that quotes a number from an operational note (e.g. a storm date). Hence
+*metric* numbers must be blanks, while *contextual* numbers are allowed when grounded in provided
+context. Until step 7 attaches context, `retrieved_context` is empty, so the rule degenerates to "all
+numbers must be blanks" — the simple check ships first; provenance is its switched-on extension.
+
+### Three-actor split; the retry loop lives in the orchestrator, above both modules
+**Chose:** **Generator** (stage 4) = finding → blanks-prose (talks to the LLM, one job).
+**Validator** (stage 5) = blanks-prose + finding → filled prose **or** a flag (pure Python, no LLM);
+its primary job is the *fill* — orphan-token and stray-numeral detection fall out of the substitution
+for free (stray-numeral = a digit tracing to neither a blank nor the provided context; see the
+provenance refinement above). **Orchestrator** (stage 6) owns the loop: generate → validate → on a flag, regenerate that
+one finding → re-check → after N tries emit an honest labeled fallback (never publish an untrusted
+narrative, §17).
+**Rejected:** Folding the check into the generator's retry (makes the validator look redundant and
+buries the guarantee); putting the loop inside the validator (gives it two jobs — check *and* drive
+the LLM).
+**Why:** Keeping the validator a separate, LLM-free module makes the number-safety guarantee
+**testable and demonstrable** — feed it adversarial prose with stray digits, with no model in the
+loop, and show it catches every one. A guarantee you can demo beats one you assert. The retry
+coordination belongs to neither single-responsibility module, so it sits above both. (CLAUDE.md: one
+responsibility per module.)
+
+### Token menu = one metric-aware, per-finding registry, shared by generator and validator
+**Chose:** A single `tokens` table mapping token → (finding field, formatter). Formatting is
+**metric-aware** (currency for cpa/cogs/ltv/margin, integer count for volume, percent for variance).
+The legal blank-menu is generated **per finding** from the fields that finding actually has populated,
+so the generator never offers a blank that would orphan (e.g. `{projected_linear}` on a CPA finding,
+which isn't projected — §6). The same table the generator shows the model is the table the validator
+fills from.
+**Rejected:** A flat token→field map with no metric awareness; offering a fixed menu regardless of
+finding (would invite orphan tokens).
+**Why:** One source of truth keeps stages 4 and 5 from drifting, and per-finding menus make orphan
+tokens structurally rare rather than something to clean up after.
+
+### LLM client: provider-agnostic seam, local Qwen default, model override for a future UI
+**Chose:** `complete(system, user, model=None) -> str` over two thin adapters selected by
+`LLM_PROVIDER`: **Ollama (default dev provider, local Qwen)** via its native `/api/chat`, and
+**Anthropic (prod)** via the official SDK (`thinking={"type":"adaptive"}`, no `temperature` — removed
+on Opus 4.8). `model=None` falls back to the `LLM_MODEL` env default; a passed value overrides — the
+seam a future web-UI model picker passes straight through.
+**Rejected:** Hardcoding the model/provider (rots, leaks secrets, needs a redeploy to change); a
+single OpenAI-compatible shim for both (the Anthropic path should use the official SDK; the skill
+guidance and the differing API shapes argue for two adapters).
+**Why:** Honors the locked §16 (endpoint/key/model are environment config). Local-first is free,
+private, and fast for learning/iteration; the `model=` argument means "set it easily now, transfer to
+a website later" needs only the parameter to exist, not the website. Note: §16's "identical HTTP
+pattern across providers" is faithfully read as *one interface over two adapters*, since the Messages
+API and Ollama's API differ in shape.
+
+---
+
 ## Template for new entries
 
 ```
