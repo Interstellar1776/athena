@@ -934,20 +934,23 @@ finding (would invite orphan tokens).
 **Why:** One source of truth keeps stages 4 and 5 from drifting, and per-finding menus make orphan
 tokens structurally rare rather than something to clean up after.
 
-### LLM client: provider-agnostic seam, local Qwen default, model override for a future UI
-**Chose:** `complete(system, user, model=None) -> str` over two thin adapters selected by
-`LLM_PROVIDER`: **Ollama (default dev provider, local Qwen)** via its native `/api/chat`, and
-**Anthropic (prod)** via the official SDK (`thinking={"type":"adaptive"}`, no `temperature` — removed
-on Opus 4.8). `model=None` falls back to the `LLM_MODEL` env default; a passed value overrides — the
-seam a future web-UI model picker passes straight through.
+### LLM client: provider-agnostic seam, THREE providers, local Ollama default, model override for a future UI
+**Chose:** `complete(system, user, model=None) -> str` over **three** thin adapters selected by
+`LLM_PROVIDER`, with the design open to more: **Ollama (default dev provider, local Qwen)** via its
+native `/api/chat`; **Anthropic** via the official SDK (`thinking={"type":"adaptive"}`, no
+`temperature` — removed on Opus 4.8); **OpenAI** via the official SDK. `model=None` falls back to the
+`LLM_MODEL` env default; a passed value overrides — the seam a future web-UI model picker passes
+straight through. Adding a provider = one more adapter + one more `LLM_PROVIDER` value.
 **Rejected:** Hardcoding the model/provider (rots, leaks secrets, needs a redeploy to change); a
-single OpenAI-compatible shim for both (the Anthropic path should use the official SDK; the skill
-guidance and the differing API shapes argue for two adapters).
-**Why:** Honors the locked §16 (endpoint/key/model are environment config). Local-first is free,
-private, and fast for learning/iteration; the `model=` argument means "set it easily now, transfer to
-a website later" needs only the parameter to exist, not the website. Note: §16's "identical HTTP
-pattern across providers" is faithfully read as *one interface over two adapters*, since the Messages
-API and Ollama's API differ in shape.
+single OpenAI-compatible shim standing in for all three (each vendor's API differs in shape, and the
+Anthropic/OpenAI paths should use their official SDKs — so genuine per-provider adapters, not a shim).
+**Why:** Honors the locked §16 (endpoint/key/model are environment config) and the user's requirement
+for all three provider options. Local-first is free, private, and fast for learning/iteration; the
+`model=` argument means "set it easily now, transfer to a website later" needs only the parameter to
+exist, not the website. §16's "identical HTTP pattern across providers" is faithfully read as *one
+interface over N adapters*, since the providers' APIs differ in shape. §16's locked examples name
+Anthropic / Ollama / self-hosted; **OpenAI is added under the same env-config mechanism** — an
+extension of the example list, not a change to the locked rule.
 
 ---
 

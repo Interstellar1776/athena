@@ -136,14 +136,23 @@ in a plain marked line) rather than publishing an untrusted sentence (§17 — n
 
 ## 7. Local-first, model-swappable (how we build and ship)
 
-Provider and model are **environment configuration** (§16), never hardcoded:
+Provider and model are **environment configuration** (§16), never hardcoded. **Three providers are
+supported, and the design stays open to more:**
 
-- **Default to local Qwen on Ollama for development** — free, private, fast to iterate on.
-- Flip one environment variable to run against Anthropic's cloud in production.
-- A `model=` override argument on the call carries a future web-UI model picker with **zero
-  rearchitecting** — the dropdown's choice is passed straight through.
+- **Local Ollama (the default)** — local Qwen for development: free, private, fast to iterate on, no
+  API key.
+- **Anthropic** — Claude via the official SDK (cloud; needs `LLM_API_KEY`).
+- **OpenAI** — GPT via the official SDK (cloud; needs `LLM_API_KEY`).
+- *…or similar* — a new provider is one more thin adapter, not a rewrite (see below).
 
-One small wrinkle worth stating honestly: §16 says "the HTTP call pattern is identical across
-providers." It's *nearly* so — the faithful implementation is **one interface (`complete(system,
-user, model=None)`) over two thin adapters**, because the Anthropic Messages API and Ollama's native
-API genuinely differ in request/response shape. Same seam, two backends.
+`LLM_PROVIDER` selects which one; `LLM_MODEL` names the model; a `model=` override argument on the call
+carries a future web-UI model picker with **zero rearchitecting** — the dropdown's choice passes
+straight through.
+
+The shape that makes "three (or more) providers" cheap: **one interface (`complete(system, user,
+model=None)`) over N thin adapters.** Each adapter only has to talk to its vendor's API and return
+text; everything upstream is provider-blind. This is the honest reading of §16's "identical HTTP
+pattern across providers" — *nearly* identical, because the Anthropic Messages API, OpenAI's API, and
+Ollama's native API differ in request/response shape, so each gets its own small adapter behind the
+shared seam. (§16's locked examples name Anthropic / Ollama / self-hosted; OpenAI is added here under
+the same env-config mechanism — an extension of the example list, not a change to the locked rule.)
