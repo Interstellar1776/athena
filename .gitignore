@@ -16,3 +16,6 @@ data/live/*
 !data/live/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+
+# --- Dev output dumps (variance_engine CLI; replaced by report_generator in BS step 6) ---
+outputs/

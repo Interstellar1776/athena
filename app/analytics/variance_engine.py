@@ -151,6 +151,34 @@ def run_pipeline(config_path: Path = DEFAULT_SYSTEM_CONFIG) -> dict[str, Any]:
 # ===========================================================================
 # 4. CLI — run the full analytics pipeline, print the feed + stage shapes
 # ===========================================================================
+
+def _dump_dev_csvs(result: dict[str, Any]) -> Path:
+    """Dev helper: write each pipeline frame to outputs/<snapshot_date>/ as CSV.
+
+    Intentionally simple — this is scaffolding until report_generator (BS step 6) owns export.
+    Each call overwrites the previous run for the same snapshot date.
+    """
+    out_dir = REPO_ROOT / "outputs" / dt.date.today().isoformat()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Findings feed — list of dicts → one row per finding
+    if result["findings"]:
+        pd.DataFrame(result["findings"]).to_csv(out_dir / "findings.csv", index=False)
+
+    # Flat DataFrames — dump directly
+    for name in ("assessments", "metrics", "gl_states"):
+        frame = result.get(name)
+        if isinstance(frame, pd.DataFrame) and not frame.empty:
+            frame.to_csv(out_dir / f"{name}.csv", index=False)
+
+    # Projection — dict of DataFrames, one file per key
+    for key, frame in (result.get("projection") or {}).items():
+        if isinstance(frame, pd.DataFrame) and not frame.empty:
+            frame.to_csv(out_dir / f"projection_{key}.csv", index=False)
+
+    return out_dir
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     result = run_pipeline()
@@ -166,6 +194,9 @@ def main() -> int:
               f"est={f['estimated']}")
     if len(result["findings"]) > 12:
         print(f"  … and {len(result['findings']) - 12} more")
+
+    out_dir = _dump_dev_csvs(result)
+    print(f"\ndev CSVs written to: {out_dir}")
     return 0
 
 
