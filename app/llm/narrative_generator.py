@@ -169,20 +169,40 @@ def _preview_fill(narrative: str, finding: dict) -> str:
 # ===========================================================================
 # 4. CLI — run the generator for the configured snapshot; optional knob A/B
 # ===========================================================================
-def _print_findings(findings: list[dict], *, numbers: str, style: str, audience: str) -> None:
-    """Generate (one LLM call per finding) and print RAW placeholder-prose + the filled PREVIEW."""
-    from app.llm.llm_client import call_llm
+def _finding_md(f: dict) -> str:
+    """One finding as a markdown block: heading + RAW (fenced) + filled PREVIEW (block-quoted)."""
+    preview = _preview_fill(f["narrative"], f)
+    quoted = "\n".join("> " + line for line in preview.splitlines())
+    return (f"### {f['finding_id']} · {f['risk_level']} · {f['alert_type']} · "
+            f"{f['entity']}/{f['region']}/{f['segment']}\n\n"
+            f"**Raw (placeholder-prose):**\n\n```\n{f['narrative']}\n```\n\n"
+            f"**Preview (filled):**\n\n{quoted}\n")
 
-    out = generate_narratives(findings, client=call_llm, numbers=numbers, style=style, audience=audience)
-    print(f"\n#### numbers={numbers} style={style} audience={audience} ({len(out)} findings) ####")
-    for f in out:
-        print(f"\n— {f['finding_id']} {f['risk_level']} {f['alert_type']} "
-              f"{f['entity']}/{f['region']}/{f['segment']} —")
-        print("RAW (placeholder-prose):\n" + f["narrative"])
-        print("PREVIEW (filled):\n" + _preview_fill(f["narrative"], f))
+
+def _render_markdown(runs: list[tuple[str, str, list[dict]]], *, audience: str, model: str,
+                     period: str) -> str:
+    """Render all variant runs as one markdown document (open it in VSCode's preview)."""
+    parts = [f"# Athena narratives — {period}",
+             f"\n- **Model:** {model} · **Audience:** {audience}\n"]
+    for numbers, style, out in runs:
+        parts.append(f"\n---\n\n## numbers = {numbers} · style = {style}\n")
+        parts.extend(_finding_md(f) for f in out)
+    return "\n".join(parts)
+
+
+def _print_terminal(runs: list[tuple[str, str, list[dict]]], *, audience: str) -> None:
+    for numbers, style, out in runs:
+        print(f"\n#### numbers={numbers} style={style} audience={audience} ({len(out)} findings) ####")
+        for f in out:
+            print(f"\n— {f['finding_id']} {f['risk_level']} {f['alert_type']} "
+                  f"{f['entity']}/{f['region']}/{f['segment']} —")
+            print("RAW (placeholder-prose):\n" + f["narrative"])
+            print("PREVIEW (filled):\n" + _preview_fill(f["narrative"], f))
 
 
 def main() -> int:
+    import os
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description="Generate placeholder-prose narratives for the feed.")
     ap.add_argument("--numbers", choices=["withhold", "show"], default=DEFAULT_NUMBERS)
@@ -192,18 +212,41 @@ def main() -> int:
                     help="how many top-ranked findings to generate (each is one LLM call)")
     ap.add_argument("--compare", action="store_true",
                     help="A/B the knobs: numbers×style (audience fixed) on the top --limit findings")
+    ap.add_argument("--out", nargs="?", const="AUTO", default=None,
+                    help="write markdown to this path instead of the terminal; bare --out picks a "
+                         "default under outputs/")
     args = ap.parse_args()
 
-    # Load + rank findings ONCE, then generate only the few we'll print (each finding = one LLM call).
+    # Load + rank findings ONCE, then generate only the few we'll show (each finding = one LLM call).
     from app.analytics.variance_engine import run_pipeline
+    from app.llm.llm_client import call_llm
 
-    findings = run_pipeline()["findings"][: args.limit]
+    result = run_pipeline()
+    period = result.get("current_period", "")
+    findings = result["findings"][: args.limit]
     combos = ([(n, s) for n in ("withhold", "show") for s in ("paragraph", "bullets")]
               if args.compare else [(args.numbers, args.style)])
     print(f"(generating {len(findings)} finding(s) × {len(combos)} variant(s) "
           f"= {len(findings) * len(combos)} LLM call(s))")
-    for numbers, style in combos:
-        _print_findings(findings, numbers=numbers, style=style, audience=args.audience)
+
+    runs = [(numbers, style,
+             generate_narratives(findings, client=call_llm, numbers=numbers, style=style,
+                                 audience=args.audience))
+            for numbers, style in combos]
+
+    if args.out is None:
+        _print_terminal(runs, audience=args.audience)
+    else:
+        model = os.getenv("LLM_MODEL", "model")
+        if args.out == "AUTO":
+            safe = model.replace(":", "-").replace("/", "-")
+            path = REPO_ROOT / "outputs" / f"narratives_{safe}_{period}.md"
+        else:
+            path = Path(args.out)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_render_markdown(runs, audience=args.audience, model=model, period=period))
+        print(f"wrote {sum(len(o) for _, _, o in runs)} narrative(s) across "
+              f"{len(runs)} variant(s) to {path}")
     return 0
 
 

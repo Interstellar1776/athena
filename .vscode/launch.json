@@ -18,7 +18,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "app.llm.narrative_generator",
-      "args": ["--compare"],
+      "args": ["--compare", "--out"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
@@ -33,7 +33,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "app.llm.narrative_generator",
-      "args": ["--compare"],
+      "args": ["--compare", "--out"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
