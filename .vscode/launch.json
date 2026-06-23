@@ -12,6 +12,36 @@
         "PYTHONPATH": "${workspaceFolder}"
       },
       "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: narratives (Ollama qwen3:32b, --compare)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.llm.narrative_generator",
+      "args": ["--compare"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:32b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: narratives (Ollama qwen3:14b, --compare)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.llm.narrative_generator",
+      "args": ["--compare"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:14b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
     }
   ]
 }

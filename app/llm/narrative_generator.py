@@ -131,12 +131,19 @@ def generate_narratives(findings: list[dict], *, client: Callable[..., str],
 
 
 def generate(config_path: Path = DEFAULT_SYSTEM_CONFIG, *, numbers: str = DEFAULT_NUMBERS,
-             style: str = DEFAULT_STYLE, audience: str = DEFAULT_AUDIENCE) -> list[dict]:
-    """End-to-end wrapper: load findings via the analytics pipeline, call the configured LLM."""
+             style: str = DEFAULT_STYLE, audience: str = DEFAULT_AUDIENCE,
+             limit: int | None = None) -> list[dict]:
+    """End-to-end wrapper: load findings via the analytics pipeline, call the configured LLM.
+
+    ``limit`` caps how many (top-ranked) findings are sent to the LLM — each finding is one call, so
+    this is the knob that controls cost/latency when you only want to eyeball a few.
+    """
     from app.analytics.variance_engine import run_pipeline
     from app.llm.llm_client import call_llm
 
     findings = run_pipeline(config_path)["findings"]
+    if limit is not None:
+        findings = findings[:limit]
     return generate_narratives(findings, client=call_llm, numbers=numbers, style=style, audience=audience)
 
 
@@ -162,11 +169,13 @@ def _preview_fill(narrative: str, finding: dict) -> str:
 # ===========================================================================
 # 4. CLI — run the generator for the configured snapshot; optional knob A/B
 # ===========================================================================
-def _print_run(numbers: str, style: str, audience: str, limit: int) -> None:
-    findings = generate(numbers=numbers, style=style, audience=audience)
-    print(f"\n#### numbers={numbers} style={style} audience={audience} "
-          f"({len(findings)} findings, showing {min(limit, len(findings))}) ####")
-    for f in findings[:limit]:
+def _print_findings(findings: list[dict], *, numbers: str, style: str, audience: str) -> None:
+    """Generate (one LLM call per finding) and print RAW placeholder-prose + the filled PREVIEW."""
+    from app.llm.llm_client import call_llm
+
+    out = generate_narratives(findings, client=call_llm, numbers=numbers, style=style, audience=audience)
+    print(f"\n#### numbers={numbers} style={style} audience={audience} ({len(out)} findings) ####")
+    for f in out:
         print(f"\n— {f['finding_id']} {f['risk_level']} {f['alert_type']} "
               f"{f['entity']}/{f['region']}/{f['segment']} —")
         print("RAW (placeholder-prose):\n" + f["narrative"])
@@ -179,17 +188,22 @@ def main() -> int:
     ap.add_argument("--numbers", choices=["withhold", "show"], default=DEFAULT_NUMBERS)
     ap.add_argument("--style", choices=["paragraph", "bullets"], default=DEFAULT_STYLE)
     ap.add_argument("--audience", choices=["exec", "analyst"], default=DEFAULT_AUDIENCE)
-    ap.add_argument("--limit", type=int, default=3, help="how many findings to print")
+    ap.add_argument("--limit", type=int, default=3,
+                    help="how many top-ranked findings to generate (each is one LLM call)")
     ap.add_argument("--compare", action="store_true",
-                    help="A/B the knobs: numbers×style (audience fixed) on the top findings")
+                    help="A/B the knobs: numbers×style (audience fixed) on the top --limit findings")
     args = ap.parse_args()
 
-    if args.compare:
-        for numbers in ("withhold", "show"):
-            for style in ("paragraph", "bullets"):
-                _print_run(numbers, style, args.audience, args.limit)
-    else:
-        _print_run(args.numbers, args.style, args.audience, args.limit)
+    # Load + rank findings ONCE, then generate only the few we'll print (each finding = one LLM call).
+    from app.analytics.variance_engine import run_pipeline
+
+    findings = run_pipeline()["findings"][: args.limit]
+    combos = ([(n, s) for n in ("withhold", "show") for s in ("paragraph", "bullets")]
+              if args.compare else [(args.numbers, args.style)])
+    print(f"(generating {len(findings)} finding(s) × {len(combos)} variant(s) "
+          f"= {len(findings) * len(combos)} LLM call(s))")
+    for numbers, style in combos:
+        _print_findings(findings, numbers=numbers, style=style, audience=args.audience)
     return 0
 
 
