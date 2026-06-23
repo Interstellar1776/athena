@@ -88,13 +88,13 @@ This is the distinction that makes Athena trustworthy *and* useful: it neither h
 
 Naively letting the LLM write numbers and then trying to "extract and re-verify" them is unreliable — the model writes "about 20%," "roughly $148," "a fifth higher," and fuzzy matching produces constant false positives, which violates the never-cry-wolf principle.
 
-**The design instead: the LLM never emits a number.** It writes prose with named placeholder tokens, and Python fills them from the structured finding.
+**The design instead: the LLM never emits a number.** It writes prose with named placeholders, and Python fills them from the structured finding.
 
 The LLM produces:
 
 > "CPA in `{entity}` is running `{variance_pct}` above plan, on pace to reach `{projected_linear}` by month-end."
 
-Python substitutes each token from the finding it already calculated. The model cannot hallucinate a number because it was never permitted to type one — it can only reference slots Python owns.
+Python substitutes each placeholder from the finding it already calculated. The model cannot hallucinate a number because it was never permitted to type one — it can only reference placeholders Python owns.
 
 **Failure behavior:**
 - If the LLM emits a placeholder that doesn't exist in the finding (e.g. `{made_up_metric}`), substitution fails **loudly and deterministically** — no fuzzy matching, no tolerance, no false positives. The output is flagged, not silently dropped.
@@ -550,7 +550,7 @@ Scheduled trigger
        ↳ outputs: list of structured findings
   → context_retriever (attach relevant operational notes to flagged findings)
   → narrative_generator (findings + context → placeholder prose)
-  → narrative_validator (fill placeholders from findings; flag any orphan token or stray numeral)
+  → narrative_validator (fill placeholders from findings; flag any orphan placeholder or stray numeral)
   → report_generator (assemble validated findings + narrative for the UI feed)
 ```
 
@@ -588,7 +588,7 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 
 ## 18. LLM Usage Guidelines
 
-**Always provide to the LLM:** structured findings (authoritative numbers + method labels) · retrieved operational context · a constrained prompt with explicit output format · instruction to reference numbers only as placeholder tokens and to acknowledge estimated values.
+**Always provide to the LLM:** structured findings (authoritative numbers + method labels) · retrieved operational context · a constrained prompt with explicit output format · instruction to reference numbers only as placeholders and to acknowledge estimated values.
 
 **Never allow the LLM to:** perform calculations · emit raw numerals in narrative prose · determine risk levels or classifications · generate analysis ungrounded in findings.
 
@@ -604,7 +604,7 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 2. **Ingestion validation** — `ingestion_validator.py`; test halt-on-bad-data and clean pass-through.
 3. **Analytics core** — sub-modules in order (loader → cleaner → merger → gl_processor → metrics_calculator → projection_engine → risk_classifier → findings_builder), then `variance_engine.py`; manually verify every field and method label.
 4. **Narrative generation** — `narrative_generator.py` with placeholder pattern; test local Ollama then API; check grounding and estimate-acknowledgement.
-5. **Narrative validation** — `narrative_validator.py`; test orphan-token detection and stray-numeral detection; confirm clean output passes without false positives.
+5. **Narrative validation** — `narrative_validator.py`; test orphan-placeholder detection and stray-numeral detection; confirm clean output passes without false positives.
 6. **Batch pipeline + reporting** — `report_generator.py`, `batch_pipeline.py`; run end-to-end across all snapshots; walk the demo arc manually.
 7. **Retrieval** — `context_retriever.py`; match relevant context to flagged findings and confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`). Built first against the existing clean `operational_notes.csv`, which is a **stand-in for post-extraction output** (the real source is raw transcripts — see step 8).
 8. **Context extraction (transcript → notes)** — `note_extractor.py`; distill raw meeting transcripts (e.g. a saved Teams call) into the structured note rows retrieval consumes (date/entity/region/segment + key operational point), using the LLM for **language→structure only** — any numbers stay *context* (governed by the provenance rule, traceable to the source transcript), never metrics. Built **after** retrieval (thin-first): prove retrieval against the stand-in notes, then produce those notes for real. Likely needs synthetic transcripts in the data generator to exercise the hard, untagged path. See `open_questions.md` and `the_hallucination_guard.md`.
@@ -616,7 +616,7 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 ## 20. Working Principles
 
 1. Python determines truth. The LLM interprets truth.
-2. The LLM never emits a number — it references placeholder tokens Python fills.
+2. The LLM never emits a number — it references placeholders Python fills.
 3. Causes and recommendations are the sidekick's reasoning, shown with supporting data — not asserted as measured fact.
 4. One responsibility per module, structured output.
 5. Build the full pipeline thin before deepening any layer.
