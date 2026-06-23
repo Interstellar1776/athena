@@ -22,9 +22,16 @@ Naming note: these are **placeholders**, never "tokens" — "token" means the mo
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+# The one regex that recognizes a placeholder in narrative prose, shared by the generator (preview
+# fill) and the validator (fill + checks) so they can never disagree. NOTE the ``0-9`` in the class:
+# placeholder names can contain digits (e.g. ``{cpa_t3m}``, ``{cpa_t12m}``) — a name-only ``[a-z_]+``
+# would silently fail to match them.
+PLACEHOLDER_RE = re.compile(r"\{([a-z0-9_]+)\}")
 
 # ===========================================================================
 # 1. The placeholder spec + the registry

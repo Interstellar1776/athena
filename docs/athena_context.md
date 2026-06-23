@@ -465,7 +465,8 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 
     # Populated downstream
     "retrieved_context": "",
-    "narrative": "",
+    "narrative": "",                           # raw placeholder-prose from narrative_generator (auditable)
+    "narrative_filled": "",                    # narrative_validator's fill (display string; raw kept above)
     "validated": False,
     "validation_flags": []
 }

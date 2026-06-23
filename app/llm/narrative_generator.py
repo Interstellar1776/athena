@@ -29,7 +29,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from app.llm.placeholders import available_placeholders, render_placeholder, PLACEHOLDERS
+from app.llm.placeholders import PLACEHOLDER_RE, available_placeholders, render_placeholder, PLACEHOLDERS
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,6 @@ DEFAULT_SYSTEM_CONFIG = REPO_ROOT / "config" / "system_config.yaml"
 DEFAULT_NUMBERS = "withhold"
 DEFAULT_STYLE = "paragraph"
 DEFAULT_AUDIENCE = "exec"
-
-_PLACEHOLDER_RE = re.compile(r"\{([a-z_]+)\}")
 
 # Prompt fragments for the two switchable axes.
 _AUDIENCE_VOICE = {
@@ -163,7 +161,7 @@ def _preview_fill(narrative: str, finding: dict) -> str:
         name = match.group(1)
         return render_placeholder(name, finding) if name in legal else match.group(0)
 
-    return _PLACEHOLDER_RE.sub(_sub, narrative)
+    return PLACEHOLDER_RE.sub(_sub, narrative)
 
 
 # ===========================================================================

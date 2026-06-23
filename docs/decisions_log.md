@@ -978,6 +978,37 @@ direction; the spine and env-config principles are unchanged. Open design detail
 
 ---
 
+## 2026 — Build Sequence 5 (narrative validator)
+
+### Validator = deterministic fill + the two checks; runs on RAW prose, ignores digit-bearing names
+**Chose:** `app/validation/narrative_validator.py`. `validate_narrative(narrative, finding)` fills legal
+placeholders (`placeholders.render_placeholder`) and flags **orphan placeholders** (a `{name}` not legal
+for the finding) and **stray numerals** (a bare digit typed into prose). The stray scan runs on the
+**raw** placeholder-prose *before* filling (after filling, legitimate values are themselves digits), and
+**blanks the `{...}` spans first** so digits inside placeholder names (`{cpa_t3m}`, `{cpa_t12m}`) aren't
+false-flagged. `validate_findings` sets `narrative_filled`/`validated`/`validation_flags` and keeps
+`narrative` raw. Numeric token regex `\d+(?:,\d+)*(?:\.\d+)?` (clean number boundaries).
+**Rejected:** fill-then-scan (can't tell filled values from leaks); a name-only `\{[a-z_]+\}` regex
+(misses `{cpa_t3m}` — this was a real bug in stage-4 preview-fill, fixed by sharing
+`placeholders.PLACEHOLDER_RE = \{([a-z0-9_]+)\}` across both modules).
+**Why:** The check is the demonstrable guarantee — no LLM in the loop, so it's unit-testable against
+adversarial prose (clean passes; injected orphan/stray flags). This is the "we catch every leak" proof.
+
+### Keep raw narrative + add narrative_filled (owner's choice)
+**Chose:** `narrative` stays the auditable placeholder-prose the LLM wrote; `narrative_filled` carries the
+display string. §14 gains `narrative_filled` (downstream-populated, like `narrative`).
+**Why:** Preserves the "the LLM wrote this, Python filled it" provenance for the pitch/UI drill-down.
+
+### Scope: validator only — retry loop, provenance, word-numbers deferred
+**Chose:** This pass is fill + flag. Deferred: the regenerate-on-flag **retry loop + honest fallback**
+(step 6 orchestrator); the **provenance** allowance permitting a stray that appears verbatim in
+`retrieved_context` (a marked hook — step 7; today context is empty so any bare digit is a stray).
+**Known limitation (documented):** number-*words* ("a fifth", "nearly double") are not caught — a digit
+check can't see them and a word watchlist is too false-positive-prone; mitigated by `numbers=withhold` +
+the prompt. Verified on local qwen3:14b: the spine held with no word-magnitudes across all stage-4 variants.
+
+---
+
 ## Template for new entries
 
 ```
