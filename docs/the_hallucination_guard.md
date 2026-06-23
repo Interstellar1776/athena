@@ -117,8 +117,8 @@ best-effort one — and a structural guarantee is one you can **demonstrate**, n
 **The validator's real job is the *fill*, not merely the check.** Blanks-prose
 (`"...{variance_pct}..."`) is not publishable — something must substitute Python's real, formatted
 numbers into the blanks. That substitution *is* the validator. The two checks fall out of it for free:
-a blank with no matching field is an **orphan token**; a bare digit that traces to neither a filled
-blank nor the provided context is a **stray numeral** (a hallucinated number). Numbers grounded in the
+a placeholder with no matching field is an **orphan placeholder**; a bare digit that traces to neither
+a filled placeholder nor the provided context is a **stray numeral** (a hallucinated number). Numbers grounded in the
 retrieved context are allowed — the check is **provenance, not mere digit-presence** (§4). The
 generator alone can never produce final output — the validator is what makes the numbers real.
 
@@ -149,7 +149,7 @@ supported, and the design stays open to more:**
 carries a future web-UI model picker with **zero rearchitecting** — the dropdown's choice passes
 straight through.
 
-The shape that makes "three (or more) providers" cheap: **one interface (`complete(system, user,
+The shape that makes "three (or more) providers" cheap: **one interface (`call_llm(system, user,
 model=None)`) over N thin adapters.** Each adapter only has to talk to its vendor's API and return
 text; everything upstream is provider-blind. This is the honest reading of §16's "identical HTTP
 pattern across providers" — *nearly* identical, because the Anthropic Messages API, OpenAI's API, and

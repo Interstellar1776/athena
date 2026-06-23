@@ -571,7 +571,7 @@ LLM_API_KEY  = os.getenv("LLM_API_KEY")             # required for cloud provide
 LLM_MODEL    = os.getenv("LLM_MODEL")               # set per environment — never hardcode a model string
 ```
 
-The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The provider is selected by `LLM_PROVIDER`; each provider has a **thin adapter behind one `complete()` interface**. The call patterns are *nearly* identical but differ in shape (Anthropic Messages API vs OpenAI vs Ollama's native API), so provider-specific behavior lives in its adapter — and adding a provider is one more adapter, not a rewrite. Reasoning + the narrative-layer design that consumes this: `the_hallucination_guard.md`.
+The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The provider is selected by `LLM_PROVIDER`; each provider has a **thin adapter behind one `call_llm()` interface**. The call patterns are *nearly* identical but differ in shape (Anthropic Messages API vs OpenAI vs Ollama's native API), so provider-specific behavior lives in its adapter — and adding a provider is one more adapter, not a rewrite. Reasoning + the narrative-layer design that consumes this: `the_hallucination_guard.md`.
 
 ---
 

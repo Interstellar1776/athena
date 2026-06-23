@@ -908,9 +908,9 @@ numbers must be blanks" — the simple check ships first; provenance is its swit
 ### Three-actor split; the retry loop lives in the orchestrator, above both modules
 **Chose:** **Generator** (stage 4) = finding → blanks-prose (talks to the LLM, one job).
 **Validator** (stage 5) = blanks-prose + finding → filled prose **or** a flag (pure Python, no LLM);
-its primary job is the *fill* — orphan-token and stray-numeral detection fall out of the substitution
-for free (stray-numeral = a digit tracing to neither a blank nor the provided context; see the
-provenance refinement above). **Orchestrator** (stage 6) owns the loop: generate → validate → on a flag, regenerate that
+its primary job is the *fill* — orphan-placeholder and stray-numeral detection fall out of the
+substitution for free (stray-numeral = a digit tracing to neither a placeholder nor the provided
+context; see the provenance refinement above). **Orchestrator** (stage 6) owns the loop: generate → validate → on a flag, regenerate that
 one finding → re-check → after N tries emit an honest labeled fallback (never publish an untrusted
 narrative, §17).
 **Rejected:** Folding the check into the generator's retry (makes the validator look redundant and
@@ -922,20 +922,21 @@ loop, and show it catches every one. A guarantee you can demo beats one you asse
 coordination belongs to neither single-responsibility module, so it sits above both. (CLAUDE.md: one
 responsibility per module.)
 
-### Token menu = one metric-aware, per-finding registry, shared by generator and validator
-**Chose:** A single `tokens` table mapping token → (finding field, formatter). Formatting is
-**metric-aware** (currency for cpa/cogs/ltv/margin, integer count for volume, percent for variance).
-The legal blank-menu is generated **per finding** from the fields that finding actually has populated,
-so the generator never offers a blank that would orphan (e.g. `{projected_linear}` on a CPA finding,
-which isn't projected — §6). The same table the generator shows the model is the table the validator
-fills from.
-**Rejected:** A flat token→field map with no metric awareness; offering a fixed menu regardless of
-finding (would invite orphan tokens).
+### Placeholder registry = one metric-aware, per-finding table, shared by generator and validator
+**Chose:** A single `placeholders` table (`app/llm/placeholders.py`) mapping placeholder → (finding
+field, formatter). Formatting is **metric-aware** (currency for cpa/cogs/ltv/margin, integer count for
+volume, percent for variance). The legal placeholder menu is generated **per finding** from the fields
+that finding actually has populated, so the generator never offers a placeholder that would orphan
+(e.g. `{projected_linear}` on a CPA finding, which isn't projected — §6). The same table the generator
+shows the model is the table the validator fills from.
+**Rejected:** A flat placeholder→field map with no metric awareness; offering a fixed menu regardless
+of finding (would invite orphan placeholders).
 **Why:** One source of truth keeps stages 4 and 5 from drifting, and per-finding menus make orphan
-tokens structurally rare rather than something to clean up after.
+placeholders structurally rare rather than something to clean up after. (Term is **placeholder**, never
+"token" — that word means the model's text/billing unit.)
 
 ### LLM client: provider-agnostic seam, THREE providers, local Ollama default, model override for a future UI
-**Chose:** `complete(system, user, model=None) -> str` over **three** thin adapters selected by
+**Chose:** `call_llm(system, user, model=None) -> str` over **three** thin adapters selected by
 `LLM_PROVIDER`, with the design open to more: **Ollama (default dev provider, local Qwen)** via its
 native `/api/chat`; **Anthropic** via the official SDK (`thinking={"type":"adaptive"}`, no
 `temperature` — removed on Opus 4.8); **OpenAI** via the official SDK. `model=None` falls back to the
