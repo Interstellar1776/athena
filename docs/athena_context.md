@@ -402,7 +402,7 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 - **`conversions.csv`** — customer_key, sale_date, conversion_date, *(dimensions)*, price_per_unit (nullable) — record-level gains; joins to `sales` on customer_key. **Fallout = submissions with no matching conversion** (anti-join), so it's only resolved once gains have landed
 - **`gl_actuals.csv`** — posting_date, document_date, cost_center (+description), gl_account (+description), amount, vendor, description — **dimension-free** raw ledger; resolves to channel+geography via `gl_mapping` keyed on (cost_center, gl_account, vendor)
 - **`reference_data.csv`** — date, *(dimensions)*, reference_type (plan/forecast), volume_in_ref, volume_converted_ref, cost_ref, cpa_ref, cogs_ref, ltv_ref, margin_ref
-- **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds RAG)
+- **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds retrieval). **Stand-in for post-extraction output:** the real-world source is raw meeting transcripts (e.g. a saved Teams call); `note_extractor` (build step 8) distills transcripts into these structured rows. See §19.
 
 **Reference/config tables** (`/config`): `gl_mapping`, `retention_config`, `cogs_config`, `system_config.yaml`.
 
@@ -519,6 +519,7 @@ athena/
 │   │   ├── narrative_generator.py   ← findings → placeholder prose → Python fills numbers
 │   │   └── query_router.py          ← routes conversational queries to the right module
 │   ├── retrieval/
+│   │   ├── note_extractor.py        ← transcripts → structured note rows (LLM: language→structure; numbers stay traceable context)
 │   │   └── context_retriever.py     ← retrieval over operational notes + GL descriptions
 │   ├── validation/
 │   │   ├── ingestion_validator.py   ← schema/type/join integrity at load
@@ -605,9 +606,10 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 4. **Narrative generation** — `narrative_generator.py` with placeholder pattern; test local Ollama then API; check grounding and estimate-acknowledgement.
 5. **Narrative validation** — `narrative_validator.py`; test orphan-token detection and stray-numeral detection; confirm clean output passes without false positives.
 6. **Batch pipeline + reporting** — `report_generator.py`, `batch_pipeline.py`; run end-to-end across all snapshots; walk the demo arc manually.
-7. **Retrieval** — `context_retriever.py`; embed operational notes + GL descriptions; confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`).
-8. **Conversational query** — `query_router.py`, `query_pipeline.py`; test NL question → correct module → grounded answer; test partial-failure plain-language handling.
-9. **Web interface** — FastAPI backend exposing pipeline outputs; intelligence-feed UI; snapshot-date selector for demo mode.
+7. **Retrieval** — `context_retriever.py`; match relevant context to flagged findings and confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`). Built first against the existing clean `operational_notes.csv`, which is a **stand-in for post-extraction output** (the real source is raw transcripts — see step 8).
+8. **Context extraction (transcript → notes)** — `note_extractor.py`; distill raw meeting transcripts (e.g. a saved Teams call) into the structured note rows retrieval consumes (date/entity/region/segment + key operational point), using the LLM for **language→structure only** — any numbers stay *context* (governed by the provenance rule, traceable to the source transcript), never metrics. Built **after** retrieval (thin-first): prove retrieval against the stand-in notes, then produce those notes for real. Likely needs synthetic transcripts in the data generator to exercise the hard, untagged path. See `open_questions.md` and `the_hallucination_guard.md`.
+9. **Conversational query** — `query_router.py`, `query_pipeline.py`; test NL question → correct module → grounded answer; test partial-failure plain-language handling.
+10. **Web interface** — FastAPI backend exposing pipeline outputs; intelligence-feed UI; snapshot-date selector for demo mode.
 
 ---
 

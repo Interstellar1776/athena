@@ -22,6 +22,16 @@ Does the model paraphrase storm dates as words to sidestep the issue, and should
 in the thin build (empty context → "all numbers must be blanks"); decide empirically when notes are
 attached. Until then the simple all-numbers-are-blanks check is correct.
 
+## 🟡 Transcript → notes extraction: approach + test data (Phase 8)
+The real context source is raw meeting transcripts (e.g. a saved Teams call), not the tidy
+`operational_notes.csv` — which is a **stand-in for post-extraction output**. `note_extractor` (build
+step 8) must turn transcripts into the structured rows retrieval consumes. Open: (a) approach — an LLM
+extraction pass (transcript → tagged note rows) vs semantic search over raw chunks vs a hybrid; (b)
+whether to generate **synthetic transcripts** in the data generator to exercise the untagged path, or
+keep the clean notes as the stand-in; (c) how extracted/quoted numbers stay traceable to the source
+transcript (provenance — `the_hallucination_guard.md` §4). Decide in Phase 8, after retrieval is
+proven against the stand-in notes.
+
 ## 🟡 LLM call count / cost / latency per batch run
 Not yet characterized. How many LLM calls does one batch run make — one per HIGH finding? One batched call for all findings? This drives both cost (the pitch claims "low cost") and latency (affects whether the feed feels live). Estimate during Phase 4 once the narrative call exists. Batching all findings into one structured call is likely cheaper and more coherent — test it.
 
@@ -43,11 +53,11 @@ the hard inversion stays on **T12M**. §11 wording revised. See `decisions_log.m
 - **`finding_id` is positional** (re-rank renumbers) — fine for a stateless feed; a stable hash id is an
   option if findings need tracking across runs.
 
-## 🟡 Conversational query router — how does it decide which module to call? (Phase 8)
+## 🟡 Conversational query router — how does it decide which module to call? (Phase 9)
 Mode 2's hardest part. Does the LLM pick from a fixed menu of analytics functions (tool/function-calling style), or does it generate a structured query that Python validates and runs? The first is simpler and safer; the second is more flexible and riskier. Lean simple first. This is the most experimental part of the system — don't let a pitch demo depend on it until proven.
 
 ## 🟢 Web framework
-FastAPI backend is settled. Frontend: React (richer, more work) vs. HTMX (simpler, server-rendered, faster to ship solo). For a solo builder optimizing for a working demo, HTMX is worth serious consideration. Decide at Phase 9.
+FastAPI backend is settled. Frontend: React (richer, more work) vs. HTMX (simpler, server-rendered, faster to ship solo). For a solo builder optimizing for a working demo, HTMX is worth serious consideration. Decide at Phase 10.
 
 ## 🟢 Embedding model (only if RAG survives the Phase 7 test)
 Local (e.g. nomic-embed via Ollama) vs. API-based. Moot if metadata filtering wins above.

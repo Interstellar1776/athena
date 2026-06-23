@@ -955,6 +955,28 @@ the one-interface-over-adapters reading; the locked env-config principle itself 
 
 ---
 
+## 2026 — Build Sequence revision: transcript→notes extraction added as step 8
+
+### Add a context-extraction step (transcript → notes) after retrieval; reclassify the notes CSV as a stand-in
+**Chose:** Insert a new build step — **8. Context extraction (transcript → notes)**, module
+`app/retrieval/note_extractor.py` — *after* step 7 (retrieval); renumber conversational query → 9, web
+interface → 10. Reclassify `operational_notes.csv` as a **stand-in for post-extraction output**; the
+real-world source is raw meeting transcripts (e.g. a saved Teams call). Extraction uses the LLM for
+**language→structure only** — numbers it surfaces stay *context* under the provenance rule
+(traceable to the source transcript), never metrics.
+**Rejected:** Extraction *before* retrieval (builds the harder, less-certain piece before proving
+retrieval earns its place); folding it into step 7 (bundles two distinct responsibilities into one
+step).
+**Why:** Thin-first (working principle #5) — prove retrieval against the existing clean stand-in notes
+first, then build extraction to produce those notes for real; the same build-the-consumer-then-deepen
+move used for narrative-before-retrieval. The founder's original intent was always transcripts, not
+pre-tagged rows; naming the step now keeps that from being lost and flags the likely need for
+synthetic transcripts to exercise the untagged path. Touches LOCKED §19/§15/§13 — revised per owner
+direction; the spine and env-config principles are unchanged. Open design details in
+`open_questions.md` (Phase 8).
+
+---
+
 ## Template for new entries
 
 ```
