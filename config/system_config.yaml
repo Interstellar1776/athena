@@ -33,6 +33,16 @@ thresholds:
 # --- confidence display ---
 min_confidence_display: always_show  # low confidence is shown, never suppressed
 
+# --- narrative layer (Build Sequence 6) ---
+# Prompt knobs for the batch run's narrative generation. The deployed run is config-driven (like
+# data_mode/snapshot); CLI flags (--numbers/--style/--audience) override per run. Omit this block to
+# fall back to the generator's defaults (withhold / paragraph / exec). The provider/model stay in the
+# environment (LLM_PROVIDER / LLM_MODEL), never here.
+narrative:
+  numbers: withhold   # withhold | show  — withhold = the model never even sees raw values
+  style: paragraph    # paragraph | bullets
+  audience: exec      # exec | analyst
+
 # --- data mode (snapshot vs live) ---
 data_mode: snapshot             # snapshot | live
 snapshot_date: "2024-05-22"     # active snapshot — ignored in live mode
