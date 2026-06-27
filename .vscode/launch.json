@@ -2,6 +2,66 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Athena: FULL RUN — generate + validate → markdown (qwen3:32b)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.validation.narrative_validator",
+      "args": ["--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:32b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: FULL RUN — generate + validate → markdown (qwen3:14b)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.validation.narrative_validator",
+      "args": ["--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:14b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: narratives only (qwen3:32b, --compare)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.llm.narrative_generator",
+      "args": ["--compare", "--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:32b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: narratives only (qwen3:14b, --compare)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.llm.narrative_generator",
+      "args": ["--compare", "--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:14b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",

@@ -9,6 +9,7 @@
 > - `open_questions.md` — unresolved decisions, kept visible.
 > - `business.md` — pitch, market, GTM, defensibility.
 > - `data_dictionary.md` — every field defined.
+> - `the_hallucination_guard.md` — the narrative layer + number-safety design (expands §4) and its pitch.
 >
 > **[LOCKED]** marks architectural commitments that should not be contradicted without a deliberate revision (and a corresponding entry in `decisions_log.md`). Everything unmarked is current direction, open to refinement.
 
@@ -87,13 +88,13 @@ This is the distinction that makes Athena trustworthy *and* useful: it neither h
 
 Naively letting the LLM write numbers and then trying to "extract and re-verify" them is unreliable — the model writes "about 20%," "roughly $148," "a fifth higher," and fuzzy matching produces constant false positives, which violates the never-cry-wolf principle.
 
-**The design instead: the LLM never emits a number.** It writes prose with named placeholder tokens, and Python fills them from the structured finding.
+**The design instead: the LLM never emits a number.** It writes prose with named placeholders, and Python fills them from the structured finding.
 
 The LLM produces:
 
 > "CPA in `{entity}` is running `{variance_pct}` above plan, on pace to reach `{projected_linear}` by month-end."
 
-Python substitutes each token from the finding it already calculated. The model cannot hallucinate a number because it was never permitted to type one — it can only reference slots Python owns.
+Python substitutes each placeholder from the finding it already calculated. The model cannot hallucinate a number because it was never permitted to type one — it can only reference placeholders Python owns.
 
 **Failure behavior:**
 - If the LLM emits a placeholder that doesn't exist in the finding (e.g. `{made_up_metric}`), substitution fails **loudly and deterministically** — no fuzzy matching, no tolerance, no false positives. The output is flagged, not silently dropped.
@@ -401,7 +402,7 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 - **`conversions.csv`** — customer_key, sale_date, conversion_date, *(dimensions)*, price_per_unit (nullable) — record-level gains; joins to `sales` on customer_key. **Fallout = submissions with no matching conversion** (anti-join), so it's only resolved once gains have landed
 - **`gl_actuals.csv`** — posting_date, document_date, cost_center (+description), gl_account (+description), amount, vendor, description — **dimension-free** raw ledger; resolves to channel+geography via `gl_mapping` keyed on (cost_center, gl_account, vendor)
 - **`reference_data.csv`** — date, *(dimensions)*, reference_type (plan/forecast), volume_in_ref, volume_converted_ref, cost_ref, cpa_ref, cogs_ref, ltv_ref, margin_ref
-- **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds RAG)
+- **`operational_notes.csv`** — date, entity, region, segment, note_text, author (qualitative context, feeds retrieval). **Stand-in for post-extraction output:** the real-world source is raw meeting transcripts (e.g. a saved Teams call); `note_extractor` (build step 8) distills transcripts into these structured rows. See §19.
 
 **Reference/config tables** (`/config`): `gl_mapping`, `retention_config`, `cogs_config`, `system_config.yaml`.
 
@@ -464,7 +465,8 @@ All facts/reference carry the same denormalized **dimension hierarchy**: entity 
 
     # Populated downstream
     "retrieved_context": "",
-    "narrative": "",
+    "narrative": "",                           # raw placeholder-prose from narrative_generator (auditable)
+    "narrative_filled": "",                    # narrative_validator's fill (display string; raw kept above)
     "validated": False,
     "validation_flags": []
 }
@@ -518,6 +520,7 @@ athena/
 │   │   ├── narrative_generator.py   ← findings → placeholder prose → Python fills numbers
 │   │   └── query_router.py          ← routes conversational queries to the right module
 │   ├── retrieval/
+│   │   ├── note_extractor.py        ← transcripts → structured note rows (LLM: language→structure; numbers stay traceable context)
 │   │   └── context_retriever.py     ← retrieval over operational notes + GL descriptions
 │   ├── validation/
 │   │   ├── ingestion_validator.py   ← schema/type/join integrity at load
@@ -548,7 +551,7 @@ Scheduled trigger
        ↳ outputs: list of structured findings
   → context_retriever (attach relevant operational notes to flagged findings)
   → narrative_generator (findings + context → placeholder prose)
-  → narrative_validator (fill placeholders from findings; flag any orphan token or stray numeral)
+  → narrative_validator (fill placeholders from findings; flag any orphan placeholder or stray numeral)
   → report_generator (assemble validated findings + narrative for the UI feed)
 ```
 
@@ -558,17 +561,18 @@ Scheduled trigger
 
 **[LOCKED]**
 
-**Intent:** Same code runs against Anthropic's API in production, local Ollama in dev, or a self-hosted model on-prem — only environment config changes.
+**Intent:** Same code runs against any supported provider — **Anthropic, OpenAI, local Ollama (the dev default), or a self-hosted model on-prem** — through per-provider adapters behind one interface; only environment config changes.
 
 ```python
 # the module never knows which provider it's talking to
 import os
-LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "https://api.anthropic.com/v1/messages")
-LLM_API_KEY  = os.getenv("LLM_API_KEY")
-LLM_MODEL    = os.getenv("LLM_MODEL")        # set per environment — never hardcode a model string
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # ollama (default) | anthropic | openai | …
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT")            # base URL override (e.g. local Ollama); per provider
+LLM_API_KEY  = os.getenv("LLM_API_KEY")             # required for cloud providers; unused by local Ollama
+LLM_MODEL    = os.getenv("LLM_MODEL")               # set per environment — never hardcode a model string
 ```
 
-The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The HTTP call pattern is identical across providers; provider-specific behavior lives in config.
+The model string is **always** set via `LLM_MODEL` in the environment, never hardcoded in code or enshrined in this doc — model names change, and a hardcoded one rots silently. The provider is selected by `LLM_PROVIDER`; each provider has a **thin adapter behind one `call_llm()` interface**. The call patterns are *nearly* identical but differ in shape (Anthropic Messages API vs OpenAI vs Ollama's native API), so provider-specific behavior lives in its adapter — and adding a provider is one more adapter, not a rewrite. Reasoning + the narrative-layer design that consumes this: `the_hallucination_guard.md`.
 
 ---
 
@@ -585,7 +589,7 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 
 ## 18. LLM Usage Guidelines
 
-**Always provide to the LLM:** structured findings (authoritative numbers + method labels) · retrieved operational context · a constrained prompt with explicit output format · instruction to reference numbers only as placeholder tokens and to acknowledge estimated values.
+**Always provide to the LLM:** structured findings (authoritative numbers + method labels) · retrieved operational context · a constrained prompt with explicit output format · instruction to reference numbers only as placeholders and to acknowledge estimated values.
 
 **Never allow the LLM to:** perform calculations · emit raw numerals in narrative prose · determine risk levels or classifications · generate analysis ungrounded in findings.
 
@@ -601,18 +605,19 @@ The model string is **always** set via `LLM_MODEL` in the environment, never har
 2. **Ingestion validation** — `ingestion_validator.py`; test halt-on-bad-data and clean pass-through.
 3. **Analytics core** — sub-modules in order (loader → cleaner → merger → gl_processor → metrics_calculator → projection_engine → risk_classifier → findings_builder), then `variance_engine.py`; manually verify every field and method label.
 4. **Narrative generation** — `narrative_generator.py` with placeholder pattern; test local Ollama then API; check grounding and estimate-acknowledgement.
-5. **Narrative validation** — `narrative_validator.py`; test orphan-token detection and stray-numeral detection; confirm clean output passes without false positives.
+5. **Narrative validation** — `narrative_validator.py`; test orphan-placeholder detection and stray-numeral detection; confirm clean output passes without false positives.
 6. **Batch pipeline + reporting** — `report_generator.py`, `batch_pipeline.py`; run end-to-end across all snapshots; walk the demo arc manually.
-7. **Retrieval** — `context_retriever.py`; embed operational notes + GL descriptions; confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`).
-8. **Conversational query** — `query_router.py`, `query_pipeline.py`; test NL question → correct module → grounded answer; test partial-failure plain-language handling.
-9. **Web interface** — FastAPI backend exposing pipeline outputs; intelligence-feed UI; snapshot-date selector for demo mode.
+7. **Retrieval** — `context_retriever.py`; match relevant context to flagged findings and confirm retrieval actually improves narrative quality (interrogate whether vector search beats simple metadata filtering on this small corpus — see `open_questions.md`). Built first against the existing clean `operational_notes.csv`, which is a **stand-in for post-extraction output** (the real source is raw transcripts — see step 8).
+8. **Context extraction (transcript → notes)** — `note_extractor.py`; distill raw meeting transcripts (e.g. a saved Teams call) into the structured note rows retrieval consumes (date/entity/region/segment + key operational point), using the LLM for **language→structure only** — any numbers stay *context* (governed by the provenance rule, traceable to the source transcript), never metrics. Built **after** retrieval (thin-first): prove retrieval against the stand-in notes, then produce those notes for real. Likely needs synthetic transcripts in the data generator to exercise the hard, untagged path. See `open_questions.md` and `the_hallucination_guard.md`.
+9. **Conversational query** — `query_router.py`, `query_pipeline.py`; test NL question → correct module → grounded answer; test partial-failure plain-language handling.
+10. **Web interface** — FastAPI backend exposing pipeline outputs; intelligence-feed UI; snapshot-date selector for demo mode.
 
 ---
 
 ## 20. Working Principles
 
 1. Python determines truth. The LLM interprets truth.
-2. The LLM never emits a number — it references placeholder tokens Python fills.
+2. The LLM never emits a number — it references placeholders Python fills.
 3. Causes and recommendations are the sidekick's reasoning, shown with supporting data — not asserted as measured fact.
 4. One responsibility per module, structured output.
 5. Build the full pipeline thin before deepening any layer.

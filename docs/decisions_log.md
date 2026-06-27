@@ -878,6 +878,137 @@ defines confidence-based display.
 
 ---
 
+## 2026 — Build Sequence 4 (narrative generation — design, pre-implementation)
+
+> Settled in a teaching/design conversation before writing the first LLM layer. Full reasoning and
+> the pitch framing live in the new `docs/the_hallucination_guard.md`; this is the decision record.
+
+### The narrative layer is the §4 spine realized: LLM owns prose, Python owns numbers AND formatting
+**Chose:** Invert the usual template — the **LLM owns the sentence** (structure, phrasing, which
+finding matters, cause hypothesis, recommendation, tone); **Python owns the numbers and how they
+render** (`$142.00` vs `20.3%` vs a bare count). The model writes named blanks (`{variance_pct}`);
+Python fills them. Numbers must be blanks; qualitative judgment (e.g. acknowledging an estimate) stays
+free — we tell the model `estimated: true` and let it phrase the caveat itself.
+**Rejected:** (a) Let the LLM write numbers and verify them after the fact — parsing numbers out of
+free-form prose ("roughly $150", "a fifth higher") is fuzzy and produces false alarms (violates never
+cry wolf). (b) A Mad-Libs template where Python owns the sentence and the LLM fills words — robotic,
+wastes the model.
+**Why:** Verification becomes a **provenance** check, not a correctness match: every number in the
+final narrative must trace to a source we control — a Python-filled blank, or (once retrieval exists)
+a value appearing *verbatim* in the provided context. A digit tracing to neither is a hallucination.
+This is a mechanical lookup ("where did this number come from?"), not a fuzzy correctness match, so it
+keeps the no-false-positives property — we changed the problem from "is this number right?" to "where
+did it come from?". Owning *formatting* (not just the value) keeps every metric's display consistent.
+**Refinement (the snowstorm case):** a naive "reject any digit" rule is wrong — it would kill a good,
+grounded sentence that quotes a number from an operational note (e.g. a storm date). Hence
+*metric* numbers must be blanks, while *contextual* numbers are allowed when grounded in provided
+context. Until step 7 attaches context, `retrieved_context` is empty, so the rule degenerates to "all
+numbers must be blanks" — the simple check ships first; provenance is its switched-on extension.
+
+### Three-actor split; the retry loop lives in the orchestrator, above both modules
+**Chose:** **Generator** (stage 4) = finding → blanks-prose (talks to the LLM, one job).
+**Validator** (stage 5) = blanks-prose + finding → filled prose **or** a flag (pure Python, no LLM);
+its primary job is the *fill* — orphan-placeholder and stray-numeral detection fall out of the
+substitution for free (stray-numeral = a digit tracing to neither a placeholder nor the provided
+context; see the provenance refinement above). **Orchestrator** (stage 6) owns the loop: generate → validate → on a flag, regenerate that
+one finding → re-check → after N tries emit an honest labeled fallback (never publish an untrusted
+narrative, §17).
+**Rejected:** Folding the check into the generator's retry (makes the validator look redundant and
+buries the guarantee); putting the loop inside the validator (gives it two jobs — check *and* drive
+the LLM).
+**Why:** Keeping the validator a separate, LLM-free module makes the number-safety guarantee
+**testable and demonstrable** — feed it adversarial prose with stray digits, with no model in the
+loop, and show it catches every one. A guarantee you can demo beats one you assert. The retry
+coordination belongs to neither single-responsibility module, so it sits above both. (CLAUDE.md: one
+responsibility per module.)
+
+### Placeholder registry = one metric-aware, per-finding table, shared by generator and validator
+**Chose:** A single `placeholders` table (`app/llm/placeholders.py`) mapping placeholder → (finding
+field, formatter). Formatting is **metric-aware** (currency for cpa/cogs/ltv/margin, integer count for
+volume, percent for variance). The legal placeholder menu is generated **per finding** from the fields
+that finding actually has populated, so the generator never offers a placeholder that would orphan
+(e.g. `{projected_linear}` on a CPA finding, which isn't projected — §6). The same table the generator
+shows the model is the table the validator fills from.
+**Rejected:** A flat placeholder→field map with no metric awareness; offering a fixed menu regardless
+of finding (would invite orphan placeholders).
+**Why:** One source of truth keeps stages 4 and 5 from drifting, and per-finding menus make orphan
+placeholders structurally rare rather than something to clean up after. (Term is **placeholder**, never
+"token" — that word means the model's text/billing unit.)
+
+### LLM client: provider-agnostic seam, THREE providers, local Ollama default, model override for a future UI
+**Chose:** `call_llm(system, user, model=None) -> str` over **three** thin adapters selected by
+`LLM_PROVIDER`, with the design open to more: **Ollama (default dev provider, local Qwen)** via its
+native `/api/chat`; **Anthropic** via the official SDK (`thinking={"type":"adaptive"}`, no
+`temperature` — removed on Opus 4.8); **OpenAI** via the official SDK. `model=None` falls back to the
+`LLM_MODEL` env default; a passed value overrides — the seam a future web-UI model picker passes
+straight through. Adding a provider = one more adapter + one more `LLM_PROVIDER` value.
+**Rejected:** Hardcoding the model/provider (rots, leaks secrets, needs a redeploy to change); a
+single OpenAI-compatible shim standing in for all three (each vendor's API differs in shape, and the
+Anthropic/OpenAI paths should use their official SDKs — so genuine per-provider adapters, not a shim).
+**Why:** Honors the locked §16 (endpoint/key/model are environment config) and the user's requirement
+for all three provider options. Local-first is free, private, and fast for learning/iteration; the
+`model=` argument means "set it easily now, transfer to a website later" needs only the parameter to
+exist, not the website. §16's "identical HTTP pattern across providers" is faithfully read as *one
+interface over N adapters*, since the providers' APIs differ in shape. **§16 was revised** (per user
+direction — OpenAI was intended from the start) to name all three providers (Anthropic, OpenAI,
+Ollama) plus self-hosted, add the `LLM_PROVIDER` selector, and replace "identical HTTP pattern" with
+the one-interface-over-adapters reading; the locked env-config principle itself is unchanged.
+
+---
+
+## 2026 — Build Sequence revision: transcript→notes extraction added as step 8
+
+### Add a context-extraction step (transcript → notes) after retrieval; reclassify the notes CSV as a stand-in
+**Chose:** Insert a new build step — **8. Context extraction (transcript → notes)**, module
+`app/retrieval/note_extractor.py` — *after* step 7 (retrieval); renumber conversational query → 9, web
+interface → 10. Reclassify `operational_notes.csv` as a **stand-in for post-extraction output**; the
+real-world source is raw meeting transcripts (e.g. a saved Teams call). Extraction uses the LLM for
+**language→structure only** — numbers it surfaces stay *context* under the provenance rule
+(traceable to the source transcript), never metrics.
+**Rejected:** Extraction *before* retrieval (builds the harder, less-certain piece before proving
+retrieval earns its place); folding it into step 7 (bundles two distinct responsibilities into one
+step).
+**Why:** Thin-first (working principle #5) — prove retrieval against the existing clean stand-in notes
+first, then build extraction to produce those notes for real; the same build-the-consumer-then-deepen
+move used for narrative-before-retrieval. The founder's original intent was always transcripts, not
+pre-tagged rows; naming the step now keeps that from being lost and flags the likely need for
+synthetic transcripts to exercise the untagged path. Touches LOCKED §19/§15/§13 — revised per owner
+direction; the spine and env-config principles are unchanged. Open design details in
+`open_questions.md` (Phase 8).
+
+---
+
+## 2026 — Build Sequence 5 (narrative validator)
+
+### Validator = deterministic fill + the two checks; runs on RAW prose, ignores digit-bearing names
+**Chose:** `app/validation/narrative_validator.py`. `validate_narrative(narrative, finding)` fills legal
+placeholders (`placeholders.render_placeholder`) and flags **orphan placeholders** (a `{name}` not legal
+for the finding) and **stray numerals** (a bare digit typed into prose). The stray scan runs on the
+**raw** placeholder-prose *before* filling (after filling, legitimate values are themselves digits), and
+**blanks the `{...}` spans first** so digits inside placeholder names (`{cpa_t3m}`, `{cpa_t12m}`) aren't
+false-flagged. `validate_findings` sets `narrative_filled`/`validated`/`validation_flags` and keeps
+`narrative` raw. Numeric token regex `\d+(?:,\d+)*(?:\.\d+)?` (clean number boundaries).
+**Rejected:** fill-then-scan (can't tell filled values from leaks); a name-only `\{[a-z_]+\}` regex
+(misses `{cpa_t3m}` — this was a real bug in stage-4 preview-fill, fixed by sharing
+`placeholders.PLACEHOLDER_RE = \{([a-z0-9_]+)\}` across both modules).
+**Why:** The check is the demonstrable guarantee — no LLM in the loop, so it's unit-testable against
+adversarial prose (clean passes; injected orphan/stray flags). This is the "we catch every leak" proof.
+
+### Keep raw narrative + add narrative_filled (owner's choice)
+**Chose:** `narrative` stays the auditable placeholder-prose the LLM wrote; `narrative_filled` carries the
+display string. §14 gains `narrative_filled` (downstream-populated, like `narrative`).
+**Why:** Preserves the "the LLM wrote this, Python filled it" provenance for the pitch/UI drill-down.
+
+### Scope: validator only — retry loop, provenance, word-numbers deferred
+**Chose:** This pass is fill + flag. Deferred: the regenerate-on-flag **retry loop + honest fallback**
+(step 6 orchestrator); the **provenance** allowance permitting a stray that appears verbatim in
+`retrieved_context` (a marked hook — step 7; today context is empty so any bare digit is a stray).
+**Known limitation (documented):** number-*words* ("a fifth", "nearly double") are not caught — a digit
+check can't see them and a word watchlist is too false-positive-prone; mitigated by `numbers=withhold` +
+the prompt. Verified on local qwen3:14b: the spine held with no word-magnitudes across all stage-4 variants.
+
+---
+
 ## Template for new entries
 
 ```
