@@ -9,18 +9,22 @@
 ## 🟡 How far does the LLM's causal reasoning go?
 The balance is set in principle (hypothesis, not fact; data always shown — see decisions log), but the *operational* line is untested. When May-22 fires multiple HIGH alerts and an operational note mentions a campaign launch, how strongly should the narrative connect them? "The May 8 note about the campaign launch may explain this" vs. "This is driven by the new campaign." Decide empirically once you can see real narrative output in Phase 4. The prompt wording is the lever.
 
-## 🟡 Does RAG earn its place, or is metadata filtering enough? (Phase 7)
-The retrieval corpus (operational notes + GL descriptions) is small and highly structured — every note already has entity/segment/date. Vector embedding + semantic search may be *worse* and certainly more complex than filtering notes by matching entity/segment/date to the flagged finding. Don't include "RAG" because it's a good pitch word — prove it beats simple filtering on this corpus. Test both in Phase 7. (If semantic search wins on free-text note content, keep it; if not, "intelligent context retrieval" via filtering is still an honest pitch.)
+## 🟡 Does RAG earn its place, or is metadata filtering enough? (deferred Phase 7 → Phase 8)
+The retrieval corpus (operational notes + GL descriptions) is small and highly structured — every note already has entity/segment/date. Vector embedding + semantic search may be *worse* and certainly more complex than filtering notes by matching entity/segment/date to the flagged finding. Don't include "RAG" because it's a good pitch word — prove it beats simple filtering on this corpus.
 
-## 🟡 Narrative validator — how strict is the contextual-number provenance check? (Phase 5 / 7)
+**Update (Phase 7, resolved-for-now):** Phase 7 shipped **metadata filtering** (`context_retriever`, `strategy="filter"`; a `"semantic"` seam raises `NotImplementedError`). The bake-off was **deferred to Phase 8** deliberately: today's `operational_notes.csv` is a *clean stand-in*, so filtering wins trivially and the comparison proves nothing about the real input. The honest test is against the **messy transcript** Phase 8's `note_extractor` consumes — run filtering-vs-semantic *there*, on untagged text. See `decisions_log.md` (BS7). (If semantic wins on free-text transcript content, wire the seam; if not, "intelligent context retrieval" via filtering is an honest pitch.)
+
+## 🟢 Narrative validator — how strict is the contextual-number provenance check? (Phase 5 / 7 — mostly resolved)
 The validator's rule is *provenance*, not digit-absence: a number in the narrative is allowed if it
 traces to a Python-filled blank or appears verbatim in the retrieved context (see
-`the_hallucination_guard.md` §4 / `decisions_log.md` BS4). Open: the exact strictness once retrieval
-(step 7) populates `retrieved_context`. Exact substring match, or phrase/window match (a stray "2"
-could coincidentally appear in a note)? Hard-reject a borderline contextual number, or flag-for-review?
-Does the model paraphrase storm dates as words to sidestep the issue, and should we nudge it to? Moot
-in the thin build (empty context → "all numbers must be blanks"); decide empirically when notes are
-attached. Until then the simple all-numbers-are-blanks check is correct.
+`the_hallucination_guard.md` §4 / `decisions_log.md` BS4).
+
+**Resolved (Phase 7):** the allowance is live with **exact-substring** matching and **flag-don't-drop**
+(a stray that traces to neither a placeholder nor `retrieved_context` is surfaced, never silently
+removed). See `decisions_log.md` (BS7). **Still open (lowered to 🟢):** a bare single digit (`"6"`) can
+match coincidentally under exact-substring — tighten to phrase/window matching only if it bites in
+practice; and whether to nudge the model to paraphrase storm dates as words. Decide empirically once we
+see real local-model narratives quoting note numbers (Phase 8, with transcripts).
 
 ## 🟡 Transcript → notes extraction: approach + test data (Phase 8)
 The real context source is raw meeting transcripts (e.g. a saved Teams call), not the tidy

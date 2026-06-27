@@ -88,3 +88,32 @@ def test_validate_findings_flags_a_bad_narrative():
     assert f["validated"] is False
     assert any(x.startswith("stray_numeral:") for x in f["validation_flags"])
     assert "orphan_placeholder:{made_up}" in f["validation_flags"]
+
+
+# ---------------------------------------------------------------------------
+# Provenance (step 7) — a number traceable to retrieved_context is allowed
+# ---------------------------------------------------------------------------
+def test_contextual_number_in_retrieved_context_passes():
+    # A digit quoted from the note ("$9.8k" → "9.8") is grounded, so it is NOT a stray.
+    f = {**cpa_finding(),
+         "retrieved_context": "OPERATIONAL NOTES:\n- 2024-05-19 (ERCOT/North/Door_to_Door): "
+                              "Finance flagged a late April invoice (~$9.8k overage)."}
+    res = validate_narrative("CPA is {variance_pct} above plan, tied to the $9.8k late invoice.", f)
+    assert res.ok
+    assert not res.strays
+
+
+def test_same_number_without_matching_context_still_flags():
+    # The identical digit is a stray when it traces to neither a placeholder nor the context.
+    f = {**cpa_finding(), "retrieved_context": "OPERATIONAL NOTES:\n- training scheduled."}
+    res = validate_narrative("CPA is {variance_pct} above plan, tied to the $9.8k late invoice.", f)
+    assert not res.ok
+    assert "9.8" in res.strays
+
+
+def test_empty_context_keeps_the_strict_rule():
+    # No context → the provenance allowance degenerates to "any bare digit is a stray".
+    f = {**cpa_finding(), "retrieved_context": ""}
+    res = validate_narrative("CPA rose 9.8 points.", f)
+    assert not res.ok
+    assert "9.8" in res.strays

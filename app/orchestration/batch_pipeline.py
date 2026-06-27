@@ -54,6 +54,7 @@ from app.llm.narrative_generator import (
     generate_narratives,
 )
 from app.llm.placeholders import available_placeholders, render_placeholder
+from app.retrieval.context_retriever import attach_context
 from app.reporting.report_generator import (
     NARRATED_LEVELS,
     build_report,
@@ -230,7 +231,15 @@ def run_batch(config_path: Path = DEFAULT_SYSTEM_CONFIG, *, client: Callable[...
     if limit is not None:
         findings = findings[:limit]
 
-    # context_retriever (step 7) attaches operational notes here; until then retrieved_context="".
+    # context_retriever (step 7) grounds each finding in matched notes + GL descriptions before
+    # narration, so the generator's cause hypothesis is grounded and the validator's provenance check
+    # has a source to allow contextual numbers against.
+    rcfg = cfg.get("retrieval") or {}
+    findings = _stage("retrieve", attach_context, findings,
+                      result["operational_notes"], result["gl_mapping"],
+                      snapshot_date=result["snapshot_date"],
+                      top_k=int(rcfg.get("top_k", 3)), strategy=str(rcfg.get("strategy", "filter")))
+
     processed = _stage("narrate", narrate_findings, findings, client=client, knobs=knobs)
     report = _stage("report", build_report, processed, summary=result["summary"],
                     snapshot_date=result["snapshot_date"], current_period=result["current_period"])
