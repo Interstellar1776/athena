@@ -39,9 +39,9 @@ min_confidence_display: always_show  # low confidence is shown, never suppressed
 # fall back to the generator's defaults (withhold / paragraph / exec). The provider/model stay in the
 # environment (LLM_PROVIDER / LLM_MODEL), never here.
 narrative:
-  numbers: withhold   # withhold | show  — withhold = the model never even sees raw values
+  numbers: show   # withhold | show  — withhold = the model never even sees raw values
   style: paragraph    # paragraph | bullets
-  audience: exec      # exec | analyst
+  audience: analyst      # exec | analyst
 
 # --- retrieval layer (Build Sequence 7) ---
 # How findings get their grounding context before narration. Operational notes are matched by
