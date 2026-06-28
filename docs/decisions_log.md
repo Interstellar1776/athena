@@ -1009,6 +1009,47 @@ the prompt. Verified on local qwen3:14b: the spine held with no word-magnitudes 
 
 ---
 
+## 2026 — Build Sequence 7 (retrieval — context_retriever)
+
+### Retrieval is metadata filtering, not RAG — the bake-off is deferred to step 8
+**Chose:** `context_retriever` matches operational notes to a finding by **metadata filtering** —
+`entity/region/segment` equality with `"ALL"` as a per-level wildcard, a date guard (no note dated
+after the snapshot), ranked by **specificity** (count of exact, non-wildcard dim matches) then
+**recency**, capped at `top_k` (default 3). A `strategy` seam exists (`"filter"` | `"semantic"`); the
+semantic arm intentionally raises `NotImplementedError`.
+**Rejected:** Building semantic/vector retrieval ("RAG") now and running the filtering-vs-semantic
+comparison against the current `operational_notes.csv`.
+**Why:** The corpus is tiny (≤7 notes/snapshot) and already cleanly tagged, so the comparison would be
+meaningless — filtering wins trivially, which is *not* evidence semantic loses on the real input. The
+realistic input is a **messy transcript** (step 8's `note_extractor`); the honest RAG-vs-filtering
+bake-off belongs there, against untagged text. `open_questions.md` updated to defer it. (No synthetic
+transcript built this step, per the build-sequence thin-first order.)
+
+### GL descriptions are attached deterministically, not retrieved
+**Chose:** A finding's channel `(entity, region, segment)` maps directly to its
+`cost_center_description` / `gl_account_description` via a `gl_mapping` filter — the distinct
+`"<cost_center_description> — <gl_account_description>"` lines — and is placed *first* in
+`retrieved_context` ("what this channel's spend is"), ahead of the filtered notes ("why it moved").
+**Why:** GL descriptions are a **fact about the channel**, not a fuzzy match — a lookup is exact and
+free. It gives the model the vocabulary of the channel's spend without inviting it to invent.
+**Threading:** `variance_engine.run` now passes `operational_notes` + `gl_mapping` through its rich
+result (already loaded by `data_loader`), so the retriever never re-loads or re-runs the ingestion gate.
+
+### Provenance is now live in narrative_validator (exact-substring, flag-don't-drop)
+**Chose:** With `retrieved_context` populated, the validator's dormant provenance allowance is switched
+on: a stray numeral is permitted iff its digit-string appears **verbatim** (exact substring) in the
+finding's `retrieved_context`; any remaining stray still **flags** (surfaced, never silently dropped).
+Empty context degenerates to the strict "all numbers must be blanks" rule.
+**Rejected:** Hard-rejecting borderline contextual numbers; window/phrase matching.
+**Why:** This is the §4 upgrade from "all numbers must be blanks" to true **provenance** — the change
+from "is this number right?" to "where did it come from?". Exact substring keeps the no-false-positives
+property. **Known permissiveness:** a bare single digit (e.g. `"6"`) can match coincidentally; accepted
+for now (the model runs `numbers=withhold` and is told to use placeholders), revisit window-matching if
+it bites. Verified end-to-end: a narrative quoting a note's `~$9.8k` passes; the same digit without
+matching context still flags.
+
+---
+
 ## Template for new entries
 
 ```

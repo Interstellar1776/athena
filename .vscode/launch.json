@@ -2,6 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Athena: FULL BATCH RUN — analytics → narrate → report (qwen3:14b)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.orchestration.batch_pipeline",
+      "args": ["--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:14b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
       "name": "Athena: FULL RUN — generate + validate → markdown (qwen3:32b)",
       "type": "debugpy",
       "request": "launch",
@@ -58,6 +73,36 @@
         "PYTHONPATH": "${workspaceFolder}",
         "LLM_PROVIDER": "ollama",
         "LLM_MODEL": "qwen3:14b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: FULL BATCH RUN — analytics → narrate → report (qwen3:32b)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.orchestration.batch_pipeline",
+      "args": ["--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:32b"
+      },
+      "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Athena: BATCH ARC WALK — every snapshot (qwen3:32b, --all)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.orchestration.batch_pipeline",
+      "args": ["--all", "--out"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LLM_PROVIDER": "ollama",
+        "LLM_MODEL": "qwen3:32b"
       },
       "python": "${workspaceFolder}/.venv/bin/python"
     },

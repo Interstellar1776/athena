@@ -21,9 +21,10 @@ Two subtleties the algorithm gets right (see ``the_hallucination_guard.md`` §4)
 * It **ignores digits inside placeholder names** (``{cpa_t3m}``/``{cpa_t12m}`` contain ``3``/``12``)
   by blanking the ``{...}`` spans before scanning. Otherwise every such placeholder is a false positive.
 
-Scope (this build): validator only. The regenerate-on-flag **retry loop** is step 6 (the orchestrator).
-The **provenance** allowance (permit a digit that appears verbatim in ``retrieved_context``) is a
-marked hook for step 7 — today ``retrieved_context`` is empty, so any bare digit is a stray.
+Scope: validator only. The regenerate-on-flag **retry loop** is step 6 (the orchestrator). The
+**provenance** allowance is **live as of step 7**: a digit that appears verbatim in the finding's
+``retrieved_context`` (notes + GL descriptions attached by ``context_retriever``) is permitted, not a
+stray. When ``retrieved_context`` is empty, this degenerates to the strict "any bare digit is a stray".
 **Known limitation:** number-*words* ("a fifth", "nearly double") are not caught — a digit check can't
 see them and a word watchlist is too false-positive-prone; mitigated by ``numbers=withhold`` + the prompt.
 
@@ -80,10 +81,17 @@ def validate_narrative(narrative: str, finding: dict) -> ValidationResult:
     #     blanked out, so digits *inside* placeholder names (e.g. {cpa_t3m}) are never flagged.
     stripped = PLACEHOLDER_RE.sub(" ", narrative)
     strays = _NUMERIC_RE.findall(stripped)
-    # Provenance hook (step 7): once retrieval populates retrieved_context, allow a stray that appears
-    # verbatim there, e.g.
-    #     context = finding.get("retrieved_context") or ""
-    #     strays = [s for s in strays if s not in context]
+    # Provenance (step 7, now live): a contextual number is legitimate if it traces to the retrieved
+    # context we handed the model — the §4 upgrade from "all numbers must be blanks" to true
+    # provenance. So a digit-string appearing *verbatim* in retrieved_context is not a stray (e.g. a
+    # "$9.8k" overage or a "May 6" date quoted from an operational note). Exact-substring match; any
+    # remaining stray still flags (surface, never silently drop). Known permissiveness: a bare single
+    # digit ("6") can match coincidentally — accepted for now; tighten to window-matching if it bites.
+    # When retrieved_context is empty (pre-retrieval, or a finding with no match) this degenerates to
+    # the strict "all numbers must be blanks" check.
+    context = finding.get("retrieved_context") or ""
+    if context:
+        strays = [s for s in strays if s not in context]
 
     # (c) Fill — legal placeholders become their formatted values; orphans stay visible as {name}.
     filled = PLACEHOLDER_RE.sub(

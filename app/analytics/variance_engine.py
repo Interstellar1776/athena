@@ -120,6 +120,10 @@ def run(data: dict[str, pd.DataFrame], *, snapshot_date: dt.date, period_close_d
         "projection": projection,
         "gl_states": gl_states,
         "merged": merged,
+        # Passthrough of the two reference frames the retrieval layer (step 7) consumes, so it never
+        # re-loads or re-runs the ingestion gate. Already loaded + validated by data_loader.
+        "operational_notes": data["operational_notes"],
+        "gl_mapping": data["gl_mapping"],
         "summary": summary,
     }
 
