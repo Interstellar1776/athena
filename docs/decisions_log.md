@@ -1098,6 +1098,55 @@ surfaces the right notes, but tighter extraction (dedupe / prefer specific scope
 
 ---
 
+## 2026 — Build Sequence 9 (conversational query — Mode 2)
+
+### Router = constrained query-spec (LLM emits JSON drawn from a vocabulary; Python validates)
+**Chose:** `query_router` turns a question into a small `QuerySpec` (`intent`, `metric`, `entity`,
+`region`, `segment`, `reference_type`) by handing the LLM the **vocabulary** (real metric names + the
+live entity/region/segment values + the intent enum) and demanding a JSON object drawn only from it;
+Python then validates each field against that same vocabulary. Off-vocabulary values land in
+`unresolved` (surfaced, not dropped); a malformed reply fails loud (`RouterError`); an unrecognizable
+question yields `intent=None`. Same LLM→JSON→validate shape as `note_extractor`.
+**Rejected:** A fixed function/tool menu (too clumsy for compound questions); a free-form query language
+Python parses (most expressive, riskiest — `open_questions` said not to start there).
+**Why:** The constrained spec is safe like a menu (every field bounded) yet flexible enough for real
+questions, and reuses a pattern already proven in step 8. Resolves the "how does the router decide"
+open question, leaning simple/safe first (§5 sequencing note).
+
+### v1 scope = explain + lookup; both answered from the already-computed results
+**Chose:** Two intents. **explain** ("why is X off?") filters the ranked §14 **findings**. **lookup**
+("what's X?") reads the **assessments** frame — which scores *every* channel including the calm ones —
+so a quiet channel gets an honest "value + method label, no alert" answer where flagged-only `findings`
+has none. The chosen assessment row is shaped into a finding-like dict so the same number-safe
+formatter + `context_retriever` consume it unchanged.
+**Rejected (deferred):** A top-risks/summary intent (overlaps Mode 1); multi-snapshot / relative-time
+questions ("last week"); on-demand narrower recomputation (v1 selects from the full snapshot pass).
+**Why:** These two cover the demo question *and* honest "is it fine?" answers with the least new
+surface. `run_pipeline` already computes everything for the snapshot, so Mode 2 is understand → select →
+synthesize, not re-derive.
+
+### Synthesis reuses the number-safety spine wholesale (thin-first); no question-aware responder yet
+**Chose:** `query_pipeline` grounds the selected record(s) with `attach_context` (step 7) and synthesizes
+via `batch_pipeline.narrate_findings` (step 4/5) — so a flagged answer runs generate→validate→retry and
+a calm lookup takes the deterministic number-safe data block. The LLM never types a digit in chat (§4);
+a hallucinated number falls back to the marked `⚠ UNVERIFIED NARRATIVE` facts line, verified in tests.
+**Rejected (deferred):** A bespoke question-aware responder that phrases the answer to mirror the
+question's wording. Noted as the first refinement.
+**Why:** The matched finding *is* an alert, so the existing spine answers it grounded and number-safe
+with zero new LLM code — maximal reuse, and the router (the genuinely new, hard part) gets the focus.
+
+### Conversational failures degrade gracefully, unlike the batch halt (§17)
+**Chose:** `query_pipeline` always returns a plain-language answer envelope
+(`{question, query_spec, status, answer, matched}`): unclear intent → rephrase prompt; off-vocabulary
+filter → name what we track; calm/absent metric → say so; any unexpected error is logged loudly but the
+user sees a civil message, never a traceback.
+**Rejected:** Reusing the batch pipeline's fail-loud/halt behavior for chat.
+**Why:** §17 is explicit — batch (unattended) halts loudly; conversational returns a plain-language
+explanation and any partial result. An empty feed is worse than an honest error for the batch, but a
+stack trace is worse than a civil "please rephrase" in a chat.
+
+---
+
 ## Template for new entries
 
 ```

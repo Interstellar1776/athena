@@ -30,6 +30,13 @@ match coincidentally under exact-substring — tighten to phrase/window matching
 practice; and whether to nudge the model to paraphrase storm dates as words. Decide empirically once we
 see real local-model narratives quoting note numbers (Phase 8, with transcripts).
 
+**Observed in practice (Phase 9):** a conversational answer ended *"evaluate incentive spend against
+766"* and **passed** validation — the bare `766` matched a substring of the finding's
+`retrieved_context`, so provenance allowed a semantically-dangling number. This is the predicted
+short-digit permissiveness biting. Candidate fixes: require a stray digit to match a longer window (not
+any substring), or only allow context numbers of ≥N digits / with a currency-or-date shape. Small,
+self-contained `narrative_validator` change — deferred so it doesn't bloat the Mode 2 PR.
+
 ## ✅ RESOLVED (Phase 8) — Transcript → notes extraction: approach + test data
 `note_extractor` turns raw transcripts into `operational_notes`-schema rows via an **LLM extraction
 pass** (the spine-aligned default): the LLM assigns tags from a dimension **dictionary** fed into the
@@ -59,8 +66,14 @@ the hard inversion stays on **T12M**. §11 wording revised. See `decisions_log.m
 - **`finding_id` is positional** (re-rank renumbers) — fine for a stateless feed; a stable hash id is an
   option if findings need tracking across runs.
 
-## 🟡 Conversational query router — how does it decide which module to call? (Phase 9)
-Mode 2's hardest part. Does the LLM pick from a fixed menu of analytics functions (tool/function-calling style), or does it generate a structured query that Python validates and runs? The first is simpler and safer; the second is more flexible and riskier. Lean simple first. This is the most experimental part of the system — don't let a pitch demo depend on it until proven.
+## ✅ RESOLVED (Phase 9) — Conversational query router → constrained query-spec
+The router emits a small JSON `QuerySpec` drawn from a **vocabulary** (real metric names + live
+entity/region/segment values + intent enum) that Python validates field-by-field — the middle path:
+safe like a fixed menu, flexible enough for real questions, riskier free-form parsing avoided. v1 answers
+two intents (**explain** over flagged findings, **lookup** over the full assessments incl. calm
+channels); synthesis reuses the number-safety spine (`narrate_findings`), and conversational failures
+degrade to plain language (§17). See `decisions_log.md` (BS9). Deferred: question-aware phrasing,
+multi-snapshot/relative-time questions, a top-risks intent.
 
 ## 🟢 Web framework
 FastAPI backend is settled. Frontend: React (richer, more work) vs. HTMX (simpler, server-rendered, faster to ship solo). For a solo builder optimizing for a working demo, HTMX is worth serious consideration. Decide at Phase 10.
