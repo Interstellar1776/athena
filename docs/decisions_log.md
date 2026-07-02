@@ -1050,6 +1050,54 @@ matching context still flags.
 
 ---
 
+## 2026 — Build Sequence 8 (context extraction — note_extractor)
+
+### Transcripts → notes is an LLM extraction pass (language→structure), numbers stay verbatim context
+**Chose:** `note_extractor` sends a raw transcript to `call_llm` and gets back JSON rows in the
+`operational_notes` schema (`date, entity, region, segment, note_text, author`) — the LLM assigns the
+tags (no human tagging step, the product requirement) and states each operational point. The valid
+dimension **dictionary** (`derive_allowed_scopes`, read from `reference_data`) is fed into the prompt so
+the model tags against real values. `context_retriever` consumes the output unchanged.
+**Rejected:** Semantic search over raw transcript chunks (no structured rows), or a hybrid, as the
+primary path. The extraction pass is the spine-aligned default (context doc §19 step 8).
+**Why:** Retrieval was already proven against the clean stand-in in step 7; step 8's job is to *produce*
+those rows for real. An extraction pass yields the same tagged structure filtering already handles and
+keeps the number-safety guarantee intact (below). Verified end-to-end on local `qwen3:14b`: the
+transcripts reconstruct the ground-truth points — the May-6 door-to-door commission push, the May-9
+telemarketing turnover, the May-19 `~$9.8k` late invoice (number preserved verbatim), the May-16 ERCOT
+West launch.
+
+### Two guards: invalid-scope rows and ungrounded-number rows are DISCARDED (logged, not silent)
+**Chose:** A model row is dropped when (a) its `(entity, region, segment)` tag isn't a known dimension,
+or (b) a numeric run in `note_text` doesn't appear **verbatim** in the source transcript. A *malformed*
+reply (unparseable JSON) instead **fails loud** (`ExtractionError`, `_stage` pattern, §17).
+**Rejected:** Coercing an unknown tag to `ALL` (silently re-scopes the note); halting the whole batch on
+one bad row (a single content error shouldn't sink the run); flag-don't-drop for numbers (that's the
+downstream validator's job).
+**Why:** Discard-on-invalid-scope keeps mis-routable notes out of retrieval. Discard-on-ungrounded-number
+is the §4 spine at the extraction boundary: the digit-run/exact-substring check mirrors
+`narrative_validator`, and dropping the note prevents a hallucinated figure from riding into
+`retrieved_context` — where the validator's provenance allowance would then wrongly *bless* it. The split
+(malformed → loud, bad-row → discard) is the "bad structure vs. bad content" line.
+
+### RAG-vs-filtering bake-off — run for real; filtering stays the default (semantic built, not wired-on)
+**Chose:** Built a genuine semantic arm (`app/retrieval/embeddings.py`: Ollama `nomic-embed-text` +
+numpy cosine; no heavy deps) and implemented `context_retriever`'s `strategy="semantic"` seam (was
+`NotImplementedError`), then ran `scripts/eval/bakeoff_retrieval.py` over the **extracted** (messy-input)
+notes. Result on `qwen3:14b` + `nomic-embed-text`: **filter 2/2, semantic 2/2** — a tie on surfacing the
+ground-truth cause for both probes (CPA-spike and fallout). **Kept `strategy="filter"` the default.**
+**Rejected:** Switching the default to semantic. It did not *win* — and it costs an embedding model +
+per-run embedding calls that filtering avoids.
+**Why:** The extraction pass converts the transcript into clean tagged rows, so by the time retrieval
+runs, the corpus is again cleanly structured and metadata filtering is exact, free, and provenance-clean.
+Semantic matched it but didn't beat it, so "intelligent context retrieval via filtering" is the honest
+pitch. The seam is now real (not a stub), so a future noisier corpus can flip the default by re-running
+the bake-off. Resolves the open question deferred from step 7. **Note:** the local model over-segments
+(one point → several rows) and occasionally over-generalizes a scope to `ALL/ALL/ALL`; retrieval still
+surfaces the right notes, but tighter extraction (dedupe / prefer specific scope) is a step-8 refinement.
+
+---
+
 ## Template for new entries
 
 ```
