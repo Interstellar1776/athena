@@ -1,0 +1,9 @@
+Contact Center Ops Standup — Thursday, May 9, 2024
+Attendees: L. Zhang (Contact Center Operations), M. Boone (Workforce)
+
+Zhang: The outbound calling center down in ERCOT South is having a rough week. We've had high agent
+turnover — a bunch of experienced reps left and we're running with new people.
+Boone: How's it hitting the funnel?
+Zhang: Lead quality and close rates are both slipping. Honestly we're seeing more drop-offs than usual
+on the telemarketing side. It'll stay soft until we rehire and retrain.
+Boone: Okay, I'll flag it so nobody mistakes it for a demand problem. It's a staffing issue.

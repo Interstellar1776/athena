@@ -12,6 +12,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -80,9 +81,41 @@ def test_top_k_caps_results():
     assert notes[0]["scope"] == "ERCOT/North/Door_to_Door"   # the most relevant survives the cap
 
 
-def test_semantic_strategy_is_the_deferred_seam():
-    with pytest.raises(NotImplementedError):
-        cr.retrieve_notes(cpa_finding(), _notes(), snapshot_date=SNAPSHOT, strategy="semantic")
+def test_unknown_strategy_is_rejected():
+    with pytest.raises(ValueError):
+        cr.retrieve_notes(cpa_finding(), _notes(), snapshot_date=SNAPSHOT, strategy="nope")
+
+
+# ---------------------------------------------------------------------------
+# retrieve_notes — semantic arm (step 8; injected stub embedder, no Ollama)
+# ---------------------------------------------------------------------------
+def _stub_embedder(texts):
+    """Deterministic keyword one-hot vectors so cosine picks the cause note — hermetic, no Ollama.
+
+    dim0 = door-to-door/commission/CPA theme (the finding's), dim1 = compliance, dim2 = print vendor."""
+    def vec(t: str):
+        t = t.lower()
+        hero = any(k in t for k in ("door-to-door", "door_to_door", "commission", "cpa",
+                                    "cost_per_acquisition"))
+        return np.array([1.0 if hero else 0.0,
+                         1.0 if "compliance" in t else 0.0,
+                         1.0 if ("vendor" in t or "print" in t) else 0.0])
+    return np.array([vec(t) for t in texts])
+
+
+def test_semantic_ranks_the_thematically_closest_note_first():
+    # The finding query embeds onto the door-to-door theme; the hero note wins on cosine similarity.
+    notes = cr.retrieve_notes(cpa_finding(), _notes(), snapshot_date=SNAPSHOT,
+                              strategy="semantic", embedder=_stub_embedder)
+    assert notes[0]["scope"] == "ERCOT/North/Door_to_Door"
+    assert "raised commissions" in notes[0]["note_text"]
+
+
+def test_semantic_respects_the_date_guard_and_top_k():
+    notes = cr.retrieve_notes(cpa_finding(), _notes(), snapshot_date=SNAPSHOT,
+                              strategy="semantic", embedder=_stub_embedder, top_k=2)
+    assert len(notes) == 2
+    assert all(n["date"] <= SNAPSHOT.isoformat() for n in notes)   # future note excluded before embedding
 
 
 # ---------------------------------------------------------------------------

@@ -8,12 +8,13 @@ against (context doc §4; ``narrative_validator``).
 
 Two context sources, two mechanisms — deliberately different:
 
-* **Operational notes → metadata filtering.** Each note is tagged with ``entity/region/segment/date``
-  (``ALL`` = a per-level wildcard). Matching is a structured filter, ranked by *specificity* then
-  *recency*. Not RAG: the corpus is tiny and already cleanly tagged, so semantic search would add an
-  embedding dependency for no gain. A ``strategy`` seam leaves the door open; the honest
-  semantic-vs-filtering bake-off belongs at step 8, against realistic messy transcripts
-  (``docs/open_questions.md``).
+* **Operational notes → metadata filtering (default) or semantic search.** Each note is tagged with
+  ``entity/region/segment/date`` (``ALL`` = a per-level wildcard). ``strategy="filter"`` (default) is a
+  structured match, ranked by *specificity* then *recency*. ``strategy="semantic"`` embeds the notes and
+  a finding-derived query and ranks by cosine similarity (``app.retrieval.embeddings``; Ollama
+  ``nomic-embed`` + numpy). Both were built for step 8's honest RAG-vs-filtering bake-off against
+  realistic extracted notes (``docs/open_questions.md``, ``decisions_log`` BS8); filtering stays the
+  default. The ``embedder`` is injectable so the semantic path is hermetically testable without Ollama.
 * **GL descriptions → deterministic lookup.** A finding's channel ``(entity, region, segment)`` maps
   straight to its ``cost_center_description`` / ``gl_account_description`` via ``gl_mapping`` — a join,
   not a fuzzy match — so the model sees *what this channel's spend actually is*.
@@ -25,7 +26,9 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+from typing import Callable
 
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -34,9 +37,25 @@ logger = logging.getLogger(__name__)
 SCOPE_DIMS = ("entity", "region", "segment")
 WILDCARD = "ALL"
 
+# An embedder is any ``list[str] -> (n, dim) float matrix`` callable; injected so the semantic path is
+# testable without Ollama. Defaults to the real Ollama embedder (app.retrieval.embeddings).
+Embedder = Callable[[list[str]], "np.ndarray"]
+
+
+def _note_dict(note: pd.Series) -> dict:
+    """Render a note row into the plain dict the generator/validator consume."""
+    return {"date": note["date"].date().isoformat(),
+            "scope": f"{note['entity']}/{note['region']}/{note['segment']}",
+            "note_text": note["note_text"], "author": note.get("author", "")}
+
+
+def _eligible(notes_df: pd.DataFrame, snapshot_date: dt.date) -> pd.DataFrame:
+    """Date guard — never surface a note dated after the snapshot (no future context leak)."""
+    return notes_df[notes_df["date"].dt.date <= snapshot_date]
+
 
 # ===========================================================================
-# 1. Operational notes — metadata filtering (specificity → recency)
+# 1a. Operational notes — metadata filtering (specificity → recency)
 # ===========================================================================
 def _matches(note: pd.Series, finding: dict) -> bool:
     """A note matches a finding iff every scope dim equals the finding's value or is the wildcard."""
@@ -49,37 +68,60 @@ def _specificity(note: pd.Series, finding: dict) -> int:
     return sum(1 for d in SCOPE_DIMS if note[d] == finding.get(d) and note[d] != WILDCARD)
 
 
+def _retrieve_filter(finding: dict, eligible: pd.DataFrame, top_k: int) -> list[dict]:
+    """Metadata filtering: keep matching notes, rank by specificity desc then recency desc."""
+    scored = [(_specificity(note, finding), note["date"], note)
+              for _, note in eligible.iterrows() if _matches(note, finding)]
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return [_note_dict(note) for _, _, note in scored[:top_k]]
+
+
+# ===========================================================================
+# 1b. Operational notes — semantic search (embedding + cosine; step-8 arm)
+# ===========================================================================
+def _finding_query(finding: dict) -> str:
+    """The natural-language query a finding poses to the note corpus — its channel + what moved."""
+    return " ".join(str(finding.get(k, "")) for k in
+                    (*SCOPE_DIMS, "metric", "alert_type")).strip()
+
+
+def _retrieve_semantic(finding: dict, eligible: pd.DataFrame, top_k: int, embedder: Embedder) -> list[dict]:
+    """Semantic ranking: embed the finding query + each eligible note, rank by cosine similarity.
+
+    One embedder call (query first, notes after) keeps stubbing simple and avoids a second round-trip."""
+    from app.retrieval.embeddings import cosine_rank
+
+    texts = [str(t) for t in eligible["note_text"]]
+    vectors = embedder([_finding_query(finding), *texts])
+    query_vec, note_matrix = vectors[0], vectors[1:]
+    ranked = cosine_rank(query_vec, note_matrix)[:top_k]
+    return [_note_dict(eligible.iloc[i]) for i, _ in ranked]
+
+
 def retrieve_notes(finding: dict, notes_df: pd.DataFrame, *, snapshot_date: dt.date,
-                   top_k: int = 3, strategy: str = "filter") -> list[dict]:
+                   top_k: int = 3, strategy: str = "filter", embedder: Embedder | None = None) -> list[dict]:
     """Return up to ``top_k`` operational notes relevant to ``finding``, most-relevant first.
 
-    ``strategy="filter"`` (default) — metadata filtering. ``strategy="semantic"`` is the documented
-    extension point (embedding + cosine), intentionally not built here; see the module docstring.
+    ``strategy="filter"`` (default) — metadata filtering (specificity → recency). ``strategy="semantic"``
+    — embedding + cosine similarity; ``embedder`` (a ``list[str] -> matrix`` callable) is injectable for
+    hermetic tests and defaults to the Ollama embedder (``app.retrieval.embeddings.embed_texts``).
     """
-    if strategy == "semantic":
-        raise NotImplementedError(
-            "semantic retrieval is the deferred step-8 arm (RAG-vs-filtering bake-off against real "
-            "transcripts) — see docs/open_questions.md; use strategy='filter'.")
-    if strategy != "filter":
+    if strategy not in ("filter", "semantic"):
         raise ValueError(f"unknown retrieval strategy {strategy!r} — expected 'filter' or 'semantic'.")
     if notes_df is None or notes_df.empty:
         return []
 
-    # Date guard — never surface a note dated after the snapshot (no future context leak).
-    eligible = notes_df[notes_df["date"].dt.date <= snapshot_date]
+    eligible = _eligible(notes_df, snapshot_date)
+    if eligible.empty:
+        return []
 
-    scored = []
-    for _, note in eligible.iterrows():
-        if _matches(note, finding):
-            scored.append((_specificity(note, finding), note["date"], note))
+    if strategy == "filter":
+        return _retrieve_filter(finding, eligible, top_k)
 
-    # Rank: specificity desc, then recency desc. (Sort by a key tuple; both descending.)
-    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
-
-    return [{"date": note["date"].date().isoformat(),
-             "scope": f"{note['entity']}/{note['region']}/{note['segment']}",
-             "note_text": note["note_text"], "author": note.get("author", "")}
-            for _, _, note in scored[:top_k]]
+    if embedder is None:                                     # default to the real Ollama embedder
+        from app.retrieval.embeddings import embed_texts
+        embedder = embed_texts
+    return _retrieve_semantic(finding, eligible, top_k, embedder)
 
 
 # ===========================================================================
@@ -108,14 +150,16 @@ def gl_descriptions(finding: dict, gl_mapping_df: pd.DataFrame) -> list[str]:
 # 3. Assemble the context string the generator/validator consume
 # ===========================================================================
 def build_context(finding: dict, notes_df: pd.DataFrame, gl_mapping_df: pd.DataFrame, *,
-                  snapshot_date: dt.date, top_k: int = 3, strategy: str = "filter") -> str:
+                  snapshot_date: dt.date, top_k: int = 3, strategy: str = "filter",
+                  embedder: Embedder | None = None) -> str:
     """Assemble ``retrieved_context``: GL descriptions (what the channel is) then matched notes (why).
 
     Plain text, so it drops into the generator's existing ``OPERATIONAL CONTEXT:`` slot and the
     validator can do verbatim-substring provenance against it. Empty string when nothing matches (the
     generator renders that as "(none provided)")."""
     gl = gl_descriptions(finding, gl_mapping_df)
-    notes = retrieve_notes(finding, notes_df, snapshot_date=snapshot_date, top_k=top_k, strategy=strategy)
+    notes = retrieve_notes(finding, notes_df, snapshot_date=snapshot_date, top_k=top_k,
+                           strategy=strategy, embedder=embedder)
 
     parts: list[str] = []
     if gl:
@@ -128,11 +172,13 @@ def build_context(finding: dict, notes_df: pd.DataFrame, gl_mapping_df: pd.DataF
 
 
 def attach_context(findings: list[dict], notes_df: pd.DataFrame, gl_mapping_df: pd.DataFrame, *,
-                   snapshot_date: dt.date, top_k: int = 3, strategy: str = "filter") -> list[dict]:
+                   snapshot_date: dt.date, top_k: int = 3, strategy: str = "filter",
+                   embedder: Embedder | None = None) -> list[dict]:
     """Return new findings with ``retrieved_context`` populated. Applied to every finding — filtering is
     free, and uniform context aids drill-down even on findings that won't be narrated."""
     out = [{**f, "retrieved_context": build_context(
-                f, notes_df, gl_mapping_df, snapshot_date=snapshot_date, top_k=top_k, strategy=strategy)}
+                f, notes_df, gl_mapping_df, snapshot_date=snapshot_date, top_k=top_k,
+                strategy=strategy, embedder=embedder)}
            for f in findings]
     n_grounded = sum(1 for f in out if f["retrieved_context"])
     logger.info("context_retriever: attached context to %d/%d findings (strategy=%s, top_k=%d)",
